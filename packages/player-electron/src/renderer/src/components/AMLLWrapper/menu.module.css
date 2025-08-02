@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+.menuContent {
+    @apply min-w-[200px] bg-[#111A] text-white;
+}

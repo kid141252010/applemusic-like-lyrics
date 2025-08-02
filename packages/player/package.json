@@ -68,7 +68,6 @@
 		"vite-plugin-wasm": "^3.4.1"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.0.6",
 		"@tauri-apps/cli": "^2.6.2",
 		"@types/convert-source-map": "^2.0.3",
 		"@types/react": "19.1.8",

@@ -11,13 +11,14 @@
   "scripts": {
     "build:libs": "lerna run build --scope \"*/react-full\" --scope \"*/vue\" --scope \"*/lyric\" --scope \"*/ws-protocol\""
   },
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@10.14.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "@applemusic-like-lyrics/lyric",
       "@biomejs/biome",
       "@parcel/watcher",
       "@swc/core",
+      "electron",
       "esbuild",
       "nx",
       "sharp"

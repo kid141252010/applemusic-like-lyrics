@@ -3,6 +3,7 @@ import { atom } from "jotai";
 import type { LyricLineMouseEvent } from "@applemusic-like-lyrics/core";
 
 import type { LyricPlayerRef } from "@applemusic-like-lyrics/react";
+import type { MouseEvent, SyntheticEvent } from "react";
 
 /**
  * 定义一个通用的回调函数结构。
@@ -28,18 +29,18 @@ const c = <Args extends unknown[], Result = void>(
  * 当点击歌曲专辑图上方的控制横条（thumb）时触发。
  * 通常用于关闭歌词页面。
  */
-export const onClickControlThumbAtom = atom(c(() => {}));
+export const onClickControlThumbAtom = atom(c((evt: MouseEvent) => {}));
 
 /**
  * 当点击音质标签时触发。
  * 通常用于打开音质详情对话框。
  */
-export const onClickAudioQualityTagAtom = atom(c(() => {}));
+export const onClickAudioQualityTagAtom = atom(c((evt: MouseEvent) => {}));
 
 /**
  * 当用户试图打开菜单时触发。
  */
-export const onRequestOpenMenuAtom = atom(c(() => {}));
+export const onRequestOpenMenuAtom = atom(c((evt: MouseEvent) => {}));
 
 /**
  * 当用户请求播放或从暂停中恢复时触发。

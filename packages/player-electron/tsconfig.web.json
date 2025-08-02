@@ -1,0 +1,23 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+  "include": [
+    "src/renderer/src/env.d.ts",
+    "src/renderer/src/**/*",
+    "src/renderer/src/**/*.tsx",
+    "src/preload/*.d.ts"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@renderer/*": [
+        "src/renderer/src/*"
+      ],
+			"@applemusic-like-lyrics/core/*": ["../core/src/*"],
+			"@applemusic-like-lyrics/react/*": ["../react/src/*"],
+			"@applemusic-like-lyrics/react-full": ["../react-full/src"],
+			"@applemusic-like-lyrics/states/*": ["../states/src/*"]
+    }
+  }
+}

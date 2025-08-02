@@ -1,5 +1,6 @@
 .musicInfo {
 	display: flex;
+	align-items: center;
 	color: white;
 	font-size: max(2vh, 1em);
 	min-width: 0;
@@ -57,5 +58,13 @@
 		&:last-child::after {
 			content: "";
 		}
+	}
+}
+
+/* 高度太小的情况下隐藏歌名以外的内容 */
+
+@media screen and (max-height: 768px) {
+	.artists, .album {
+		display: none;
 	}
 }
