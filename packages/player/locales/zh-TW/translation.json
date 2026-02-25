@@ -7,7 +7,10 @@
 			"toggleFullscreen": "全熒幕 / 取消全熒幕",
 			"toggleLyrics": "顯示歌詞",
 			"editMusicOverrideMessage": "編輯歌曲覆蓋訊息",
-			"exitLyricPage": "退出歌詞介面"
+			"openRecorder": "打开捕获面板",
+			"openScreenshotTool": "打开截图工具",
+			"exitLyricPage": "退出歌詞介面",
+			"play": "播放"
 		},
 		"audioQuality": {
 			"title": "音訊解碼資訊",
@@ -21,7 +24,6 @@
 			"hires": "高解析度保真壓縮"
 		},
 		"openMenuViaRightClick": "請右鍵歌詞介面任意位置打開目錄哦！",
-		"buttonForDisplayOnly": "此按鈕僅供展示用途，暫無實際功能",
 		"loadAudioError": "播放後端加載音頻失敗\n{error}",
 		"ttmlImportDialog": {
 			"openButtonLabel": "從 AMLL TTML DB 搜尋 / 導入歌詞",
@@ -47,7 +49,8 @@
 		},
 		"page": {
 			"back": "返回"
-		}
+		},
+		"settings": "设置"
 	},
 	"extension": {
 		"inject": {
@@ -67,6 +70,7 @@
 		"buttonLabel": "新建播放清單",
 		"dialog": {
 			"title": "新建歌單",
+			"name": "歌单名称",
 			"namePlaceholder": "歌單名稱"
 		}
 	},
@@ -161,34 +165,78 @@
 				},
 				"enterAmllDevPage": "歌詞介面開發用工具"
 			},
-			"lyricFont": {
-				"fontPreview": {
-					"defaultText": "字體預覽 Font Preview",
-					"label": "字體預覽"
-				},
-				"subtitle": "歌詞字體設定",
-				"tip": "此設定僅針對歌詞字體，不包括其它套件的字體",
-				"fontFamily": {
-					"label": "字體家族",
-					"description": "以逗號分隔的字體名稱組合，等同於 CSS 的 font-family 屬性，留空為默認"
-				},
-				"fontWeight": {
-					"label": "字體字重",
-					"description": "等同於 CSS 的 font-weight 屬性，設定 0 為系統控制，建議值 600"
-				},
-				"letterSpacing": {
-					"label": "字元間距",
-					"description": "等同於 CSS 的 letter-spacing 屬性，留空為默認"
-				}
-			},
 			"general": {
+				"subtitle": "常規",
 				"displayLanguage": {
 					"cimode": "本地化 ID",
 					"label": "顯示語言"
 				},
-				"subtitle": "常規"
+				"theme": {
+					"auto": "自动",
+					"light": "浅色",
+					"dark": "深色",
+					"label": "界面主题",
+					"description": "选择应用的外观主题"
+				}
+			},
+			"lyricContent": {
+				"subtitle": "歌詞內容",
+				"enableLyricTranslationLine": "顯示翻譯歌詞",
+				"enableLyricRomanLine": {
+					"label": "顯示音譯歌詞"
+				},
+				"enableLyricSwapTransRomanLine": {
+					"label": "啟用音譯歌詞与翻譯歌詞互換",
+					"description": "僅上面二者啟用后有效"
+				}
+			},
+			"lyricAppearance": {
+				"subtitle": "歌詞樣式",
+				"lyricPlayerImplementation": {
+					"menu": {
+						"dom": "DOM",
+						"dom-slim": "DOM（閹割版）",
+						"canvas": "Canvas"
+					},
+					"label": "歌詞播放器實現",
+					"description": "目前有兩個歌詞播放實現\n- DOM：使用 DOM 元素實現，目前效果最全，但效能開銷大\n- Canvas：使用 Canvas 實現，仍在開發中，性能優異，但部分細節效果不足"
+				},
+				"lyricFontSize": {
+					"menu": {
+						"tiny": "超小",
+						"extra_small": "极小",
+						"small": "小",
+						"medium": "中",
+						"large": "大",
+						"extra_large": "极大",
+						"huge": "超大"
+					},
+					"label": "歌词字体大小",
+					"descriptionResponsive": "设置歌词的字体大小"
+				},
+				"enableLyricLineBlurEffect": {
+					"label": "啟用歌詞模糊效果",
+					"description": "對效能影響較高，如果遇到效能問題，可以嘗試關閉此項。預設開啟。"
+				},
+				"enableLyricLineScaleEffect": {
+					"label": "啟用歌詞縮放效果",
+					"description": "對效能無影響，非目前播放歌詞行會略微縮小。預設開啟"
+				},
+				"enableLyricLineSpringAnimation": {
+					"label": "啟用歌詞行彈簧動畫效果",
+					"description": "對效能影響較高，如果遇到效能問題，可以嘗試關閉此項。預設開啟。"
+				},
+				"advanceLyricDynamicLyricTime": {
+					"label": "提前歌詞行時序",
+					"description": "即將原歌詞行的初始時間時序提前，以便在歌詞滾動結束後剛好開始播放（逐詞）歌詞效果。這個行為更接近 Apple Music 的效果，但是大部分情況下會導致歌詞行末尾的歌詞尚未播放完成便被切換到下一行。"
+				},
+				"lyricWordFadeWidth": {
+					"label": "逐漸漸變寬度",
+					"description": "調節逐詞歌詞時單字的漸變過渡寬度，單位為全角字的寬度，預設為 0.5。\n如果要模擬 Apple Music for Android 的效果，可以設定為 1。\n如果要模擬 Apple Music for iPad 的效果，可以設定為 0.5。\n如需關閉逐詞歌詞時單字的漸變過渡效果，可設定為 0。"
+				}
 			},
 			"musicInfoAppearance": {
+				"subtitle": "歌曲資訊樣式",
 				"playerControlsType": {
 					"menu": {
 						"controls": "播放控制組件",
@@ -207,7 +255,6 @@
 					"label": "垂直佈局專輯圖佈局模式",
 					"description": "在隱藏歌詞的情況下專輯圖的佈局方式：\n- 自動：根據專輯圖是否為影片以使用沉浸佈局\n- 強制預設佈局：強制使用預設的專輯圖佈局\n- 強制沉浸佈局：強制使用沉浸式的專輯圖佈局"
 				},
-				"subtitle": "歌曲資訊樣式",
 				"showMusicName": {
 					"label": "顯示歌曲名稱"
 				},
@@ -230,46 +277,19 @@
 					"description": "單位為赫茲（hz），此項會影響音訊視覺化和背景跳動效果的展示效果"
 				}
 			},
-			"lyricAppearance": {
-				"lyricPlayerImplementation": {
-					"menu": {
-						"dom": "DOM",
-						"dom-slim": "DOM（閹割版）",
-						"canvas": "Canvas"
-					},
-					"label": "歌詞播放器實現",
-					"description": "目前有兩個歌詞播放實現\n- DOM：使用 DOM 元素實現，目前效果最全，但效能開銷大\n- Canvas：使用 Canvas 實現，仍在開發中，性能優異，但部分細節效果不足"
-				},
-				"subtitle": "歌詞樣式",
-				"enableLyricLineBlurEffect": {
-					"label": "啟用歌詞模糊效果",
-					"description": "對效能影響較高，如果遇到效能問題，可以嘗試關閉此項。預設開啟。"
-				},
-				"enableLyricLineScaleEffect": {
-					"label": "啟用歌詞縮放效果",
-					"description": "對效能無影響，非目前播放歌詞行會略微縮小。預設開啟"
-				},
-				"enableLyricLineSpringAnimation": {
-					"label": "啟用歌詞行彈簧動畫效果",
-					"description": "對效能影響較高，如果遇到效能問題，可以嘗試關閉此項。預設開啟。"
-				},
-				"advanceLyricDynamicLyricTime": {
-					"label": "提前歌詞行時序",
-					"description": "即將原歌詞行的初始時間時序提前，以便在歌詞滾動結束後剛好開始播放（逐詞）歌詞效果。這個行為更接近 Apple Music 的效果，但是大部分情況下會導致歌詞行末尾的歌詞尚未播放完成便被切換到下一行。"
-				},
-				"lyricWordFadeWidth": {
-					"label": "逐漸漸變寬度",
-					"description": "調節逐詞歌詞時單字的漸變過渡寬度，單位為全角字的寬度，預設為 0.5。\n如果要模擬 Apple Music for Android 的效果，可以設定為 1。\n如果要模擬 Apple Music for iPad 的效果，可以設定為 0.5。\n如需關閉逐詞歌詞時單字的漸變過渡效果，可設定為 0。"
-				}
-			},
 			"lyricBackground": {
+				"subtitle": "歌詞背景",
 				"menu": {
 					"meshGradientRenderer": "網格漸變渲染器 （Mesh Gradient Renderer）",
-					"pixiRenderer": "PixiJS 渲染器"
+					"pixiRenderer": "PixiJS 渲染器",
+					"cssBackground": "CSS 背景"
 				},
-				"subtitle": "歌詞背景",
 				"backgroundRenderer": {
 					"label": "背景渲染器"
+				},
+				"lyricBackgroundColor": {
+					"label": "CSS 背景属性值",
+					"description": "等同于放入 background 样式的字符串值，默认为 #111111"
 				},
 				"lyricBackgroundFPS": {
 					"label": "背景最高幀數",
@@ -284,15 +304,30 @@
 					"description": "讓背景會在除了切換歌曲變換封面的情況下保持靜止，如果遇到了效能問題，可以考慮開啟此項。\n注意：啟用此項會導致背景跳動效果失效。"
 				}
 			},
-			"lyricContent": {
-				"subtitle": "歌詞內容",
-				"enableLyricTranslationLine": "顯示翻譯歌詞",
-				"enableLyricRomanLine": {
-					"label": "顯示音譯歌詞"
+			"lyricFont": {
+				"fontPreview": {
+					"defaultText": "字體預覽 Font Preview",
+					"label": "字體預覽"
 				},
-				"enableLyricSwapTransRomanLine": {
-					"label": "啟用音譯歌詞与翻譯歌詞互換",
-					"description": "僅上面二者啟用后有效"
+				"subtitle": "歌詞字體設定",
+				"tip": "此設定僅針對歌詞字體，不包括其它套件的字體",
+				"fontFamily": {
+					"label": "字體家族",
+					"description": "以逗號分隔的字體名稱組合，等同於 CSS 的 font-family 屬性，留空為默認"
+				},
+				"fontWeight": {
+					"label": "字體字重",
+					"description": "等同於 CSS 的 font-weight 屬性，設定 0 為系統控制，建議值 600"
+				},
+				"letterSpacing": {
+					"label": "字元間距",
+					"description": "等同於 CSS 的 letter-spacing 屬性，留空為默認"
+				}
+			},
+			"smtc": {
+				"enableMediaControls": {
+					"label": "启用内置播放器的媒体控件",
+					"description": "目前只支持 Windows 的 SMTC"
 				}
 			}
 		},
@@ -353,10 +388,7 @@
 	},
 	"ws-protocol": {
 		"toast": {
-			"switchSongNotSupported": "WS Protocol 模式下無法切換歌曲",
-			"pauseOrPlaySongNotSupported": "WS Protocol 模式下無法暫停 / 繼續播放音樂",
-			"seekNotSupported": "WS Protocol 模式下無法修改播放進度",
-			"changeVolumeNotSupported": "WS Protocol 模式下無法修改音量大小"
+			"ttmlParseError": "解析来自 WS 发送端的 TTML 歌词时出错：{{error}}"
 		}
 	},
 	"error": {
@@ -378,9 +410,7 @@
 			"installPlugins": "安裝擴充程式",
 			"openPluginDirectory": "打開擴充程式資料夾",
 			"tab": "擴充程式管理"
-		},
-		"player": {
-			"tab": "AMLL Player 設定"
 		}
-	}
+	},
+	"name": ""
 }
