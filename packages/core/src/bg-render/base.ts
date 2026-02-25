@@ -108,8 +108,8 @@ export abstract class BaseRenderer extends AbstractBaseRenderer {
 		this.canvas.height = height;
 	}
 	/**
-	 * 修改背景的流动速度，数字越大越快，默认为 4
-	 * @param speed 背景的流动速度，默认为 4
+	 * 修改背景的流动速度，数字越大越快，默认为 1
+	 * @param speed 背景的流动速度，默认为 1
 	 */
 	setFlowSpeed(speed: number) {
 		this.flowSpeed = speed;
