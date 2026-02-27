@@ -395,7 +395,9 @@ export class LyricLineEl extends LyricLineBase {
 		const roman = this.element.children[2] as HTMLDivElement;
 		// 非动态歌词，直接渲染整行与副行
 		if (this.lyricPlayer._getIsNonDynamic()) {
-			main.innerText = this.lyricLine.words.map((w) => w.word).join("");
+			main.innerText = this.lyricLine.words
+				.map((w) => this.lyricPlayer.processObsceneWord(w))
+				.join("");
 			this.setSubLinesText(trans, roman);
 			return;
 		}
@@ -465,9 +467,11 @@ export class LyricLineEl extends LyricLineBase {
 			mainWordEl.appendChild(wordContainer);
 		}
 
+		const displayWord = this.lyricPlayer.processObsceneWord(word);
+
 		if (shouldEmphasize) {
 			mainWordEl.classList.add(styles.emphasize);
-			for (const char of word.word.trim()) {
+			for (const char of displayWord.trim()) {
 				const charEl = document.createElement("span");
 				charEl.innerText = char;
 				subElements.push(charEl);
@@ -476,10 +480,10 @@ export class LyricLineEl extends LyricLineBase {
 		} else {
 			if (hasRomanLine) {
 				const wordEl = document.createElement("div");
-				wordEl.innerText = word.word.trim();
+				wordEl.innerText = displayWord.trim();
 				wordContainer.appendChild(wordEl);
 			} else if (romanWord.length === 0) {
-				wordContainer.innerText = word.word.trim();
+				wordContainer.innerText = displayWord.trim();
 			}
 		}
 
