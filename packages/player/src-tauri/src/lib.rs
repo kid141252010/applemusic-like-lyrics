@@ -1,24 +1,25 @@
-use crate::server::AMLLWebSocketServer;
+use std::net::SocketAddr;
+
 use amll_player_core::AudioInfo;
 use anyhow::Context;
 use ffmpeg_next as ffmpeg;
 use serde::*;
 use serde_json::Value;
-use std::net::SocketAddr;
-use tauri::ipc::Channel;
 use tauri::{
-    AppHandle, Manager, PhysicalSize, Runtime, Size, State, WebviewWindowBuilder,
+    AppHandle, Manager, PhysicalSize, Runtime, Size, State, WebviewWindowBuilder, ipc::Channel,
     utils::config::WindowEffectsConfig, window::Effect,
 };
 use tokio::sync::RwLock;
 use tracing::*;
+
+use crate::server::AMLLWebSocketServer;
 
 mod player;
 mod screen_capture;
 mod server;
 
 #[cfg(target_os = "windows")]
-mod taskbar_lyric_manager;
+mod taskbar_lyric;
 
 pub type AMLLWebSocketServerWrapper = RwLock<AMLLWebSocketServer>;
 pub type AMLLWebSocketServerState<'r> = State<'r, AMLLWebSocketServerWrapper>;
@@ -331,12 +332,18 @@ pub fn run() {
             player::set_media_controls_enabled,
             read_local_music_metadata,
             restart_app,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::mouse_forward::set_click_interception,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::mouse_forward::set_forwarding_enabled,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::mouse_forward::stop_mouse_hook
         ])
         .setup(|app| {
             player::init_local_player(app.handle().clone());
 
             #[cfg(target_os = "windows")]
-            taskbar_lyric_manager::init_taskbar_lyric(app.handle());
+            taskbar_lyric::init_taskbar_lyric(app.handle());
 
             #[cfg(desktop)]
             let _ = app
@@ -350,6 +357,14 @@ pub fn run() {
                 tauri::async_runtime::block_on(recreate_window(app.handle(), "main", None));
             }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event
+                && window.label() == "main"
+                && let Some(taskbar_win) = window.app_handle().get_webview_window("taskbar-lyric")
+            {
+                let _ = taskbar_win.destroy();
+            }
         })
         .run(context)
         .expect("error while running tauri application");

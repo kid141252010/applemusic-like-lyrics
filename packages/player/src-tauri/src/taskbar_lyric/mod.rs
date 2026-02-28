@@ -1,8 +1,15 @@
 use std::sync::Mutex;
+
 use taskbar_lyric::TaskbarService;
 use tauri::Manager;
-use windows::Win32::Foundation::HWND;
-use windows::Win32::UI::WindowsAndMessaging::{HWND_TOP, SWP_NOZORDER, SetWindowPos};
+use tracing::warn;
+use windows::Win32::{
+    Foundation::HWND,
+    UI::WindowsAndMessaging::{HWND_TOP, SWP_NOZORDER, SetWindowPos},
+};
+
+pub mod mouse_forward;
+pub mod webview_finder;
 
 #[allow(dead_code)]
 pub struct TaskbarLyricWatchers {
@@ -39,6 +46,7 @@ pub fn init_taskbar_lyric(app: &tauri::AppHandle) {
                         SWP_NOZORDER,
                     );
                 }
+                mouse_forward::update_cached_bounds();
             }
         }
     });
@@ -61,7 +69,7 @@ pub fn init_taskbar_lyric(app: &tauri::AppHandle) {
 
         let win_builder = tauri::WebviewWindowBuilder::new(&app_clone, "taskbar-lyric", url)
             .decorations(true)
-            .transparent(false)
+            .transparent(true)
             .always_on_top(true)
             .skip_taskbar(false)
             .resizable(false)
@@ -70,10 +78,16 @@ pub fn init_taskbar_lyric(app: &tauri::AppHandle) {
             .visible(true);
 
         if let Ok(win) = win_builder.build() {
-            let _ = win.show();
-
             if let Ok(hwnd) = win.hwnd() {
                 let hwnd_ptr = hwnd.0 as usize;
+                let top_hwnd = HWND(hwnd.0 as *mut _);
+
+                if let Some(webview_hwnd) = webview_finder::find_webview_hwnd(top_hwnd) {
+                    mouse_forward::init_mouse_forwarding_state(top_hwnd, webview_hwnd);
+                    mouse_forward::start_mouse_hook_thread();
+                } else {
+                    warn!("未能找到 WebView 句柄");
+                }
 
                 if let Some(state) = app_clone.try_state::<TaskbarLyricState>()
                     && let Some(srv) = state.service.lock().unwrap().as_ref()
@@ -117,6 +131,8 @@ pub fn init_taskbar_lyric(app: &tauri::AppHandle) {
                         tray: taskbar_lyric::TrayWatcher::new(tray_cb).ok(),
                         reg: taskbar_lyric::RegistryWatcher::new(reg_cb).ok(),
                     });
+
+                    let _ = win.show();
                 }
             } else {
                 tracing::warn!("Failed to get hwnd for taskbar-lyric window");
