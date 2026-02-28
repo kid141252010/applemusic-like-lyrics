@@ -17,6 +17,9 @@ mod player;
 mod screen_capture;
 mod server;
 
+#[cfg(target_os = "windows")]
+mod taskbar_lyric_manager;
+
 pub type AMLLWebSocketServerWrapper = RwLock<AMLLWebSocketServer>;
 pub type AMLLWebSocketServerState<'r> = State<'r, AMLLWebSocketServerWrapper>;
 
@@ -262,7 +265,7 @@ fn init_logging() {
     #[cfg(debug_assertions)]
     {
         tracing_subscriber::fmt()
-            .with_env_filter("amll_player=trace,wry=info")
+            .with_env_filter("amll_player=trace,wry=info,taskbar_lyric=trace")
             .with_thread_names(true)
             .with_timer(tracing_subscriber::fmt::time::uptime())
             .init();
@@ -331,6 +334,9 @@ pub fn run() {
         ])
         .setup(|app| {
             player::init_local_player(app.handle().clone());
+
+            #[cfg(target_os = "windows")]
+            taskbar_lyric_manager::init_taskbar_lyric(app.handle());
 
             #[cfg(desktop)]
             let _ = app
