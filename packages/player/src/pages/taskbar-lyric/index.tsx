@@ -2,8 +2,7 @@ import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { AnimatePresence, motion } from "framer-motion";
-import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import {
 	METADATA_EVENT,
 	PLAY_STATUS_EVENT,
@@ -11,15 +10,19 @@ import {
 	type TaskbarLyricMetadataPayload,
 	type TaskbarLyricPlayStatusPayload,
 	type TaskbarLyricPositionPayload,
+	type TaskbarLyricThemePayload,
+	THEME_EVENT,
 } from "../../components/TaskbarLyricBridge/index.tsx";
 import styles from "./index.module.css";
+
+const LYRIC_OFFSET = 300;
 
 function findCurrentLyricIndex(lines: LyricLine[], position: number): number {
 	let low = 0;
 	let high = lines.length - 1;
 	let index = -1;
 	while (low <= high) {
-		const mid = (low + high) >> 1;
+		const mid = Math.floor((low + high) / 2);
 		const lineTime = lines[mid].startTime;
 		if (lineTime <= position) {
 			index = mid;
@@ -41,44 +44,122 @@ type LyricItem = {
 	status: "primary" | "secondary";
 };
 
-export const TaskbarLyricApp = () => {
-	const [musicName, setMusicName] = useState("等待同步...");
-	const [musicArtists, setMusicArtists] = useState("");
-	const [musicCover, setMusicCover] = useState("");
-	const [musicCoverIsVideo, setMusicCoverIsVideo] = useState(false);
-	const [position, setPosition] = useState(0);
-	const [lyricLines, setLyricLines] = useState<LyricLine[]>([]);
-	const [jumpState, setJumpState] = useState({ lastIndex: -1, jumpId: 0 });
+interface AppState {
+	musicName: string;
+	musicArtists: string;
+	musicCover: string;
+	musicCoverIsVideo: boolean;
+	musicPlaying: boolean;
+	lyricLines: LyricLine[];
+	currentLyricIndex: number;
+	jumpState: { lastIndex: number; jumpId: number };
+	theme: "dark" | "light";
+}
 
+type Action =
+	| { type: "SYNC_METADATA"; payload: TaskbarLyricMetadataPayload }
+	| { type: "UPDATE_INDEX"; payload: number }
+	| { type: "UPDATE_PLAY_STATUS"; payload: boolean }
+	| { type: "UPDATE_THEME"; payload: "dark" | "light" };
+
+function reducer(state: AppState, action: Action): AppState {
+	switch (action.type) {
+		case "SYNC_METADATA": {
+			const data = action.payload;
+			return {
+				...state,
+				musicName: data.musicName,
+				musicArtists: data.musicArtists.map((a) => a.name).join(" / "),
+				musicCover: data.musicCover,
+				musicCoverIsVideo: data.musicCoverIsVideo,
+				lyricLines: data.lyricLines,
+				currentLyricIndex: -1,
+				jumpState: { lastIndex: -1, jumpId: 0 },
+			};
+		}
+
+		case "UPDATE_INDEX": {
+			const nextIndex = action.payload;
+			if (nextIndex === state.currentLyricIndex) return state;
+
+			const prevLastIndex = state.jumpState.lastIndex;
+			const isJump = prevLastIndex !== -1 && nextIndex !== prevLastIndex + 1;
+
+			return {
+				...state,
+				currentLyricIndex: nextIndex,
+				jumpState: {
+					lastIndex: nextIndex,
+					jumpId: isJump ? state.jumpState.jumpId + 1 : state.jumpState.jumpId,
+				},
+			};
+		}
+
+		case "UPDATE_PLAY_STATUS": {
+			return { ...state, musicPlaying: action.payload };
+		}
+
+		case "UPDATE_THEME": {
+			return { ...state, theme: action.payload };
+		}
+
+		default: {
+			return state;
+		}
+	}
+}
+
+const initialState: AppState = {
+	musicName: "未知歌曲",
+	musicArtists: "",
+	musicCover: "",
+	musicCoverIsVideo: false,
+	musicPlaying: false,
+	lyricLines: [],
+	currentLyricIndex: -1,
+	jumpState: { lastIndex: -1, jumpId: 0 },
+	theme: "light",
+};
+
+export const TaskbarLyricApp = () => {
+	const [state, dispatch] = useReducer(reducer, initialState);
+	const positionRef = useRef(0);
 	const anchorRef = useRef({ position: 0, time: performance.now() });
-	const playingRef = useRef(false);
+
+	const lyricLinesRef = useRef<LyricLine[]>([]);
+	useEffect(() => {
+		lyricLinesRef.current = state.lyricLines;
+	}, [state.lyricLines]);
 
 	const updateAnchor = useCallback((pos: number) => {
 		anchorRef.current = { position: pos, time: performance.now() };
-		setPosition(pos);
+		positionRef.current = pos;
+
+		const nextIndex = findCurrentLyricIndex(
+			lyricLinesRef.current,
+			pos + LYRIC_OFFSET,
+		);
+		dispatch({ type: "UPDATE_INDEX", payload: nextIndex });
 	}, []);
 
 	useEffect(() => {
 		const unlistenMetadata = listen<TaskbarLyricMetadataPayload>(
 			METADATA_EVENT,
 			(evt) => {
-				const data = evt.payload;
-				setMusicName(data.musicName);
-				setMusicArtists(data.musicArtists.map((a) => a.name).join(" / "));
-				setLyricLines(data.lyricLines);
-				setMusicCover(data.musicCover);
-				setMusicCoverIsVideo(data.musicCoverIsVideo);
+				dispatch({ type: "SYNC_METADATA", payload: evt.payload });
 			},
 		);
 
 		const unlistenPlayStatus = listen<TaskbarLyricPlayStatusPayload>(
 			PLAY_STATUS_EVENT,
 			(evt) => {
-				playingRef.current = evt.payload.musicPlaying;
+				const playing = evt.payload.musicPlaying;
 				anchorRef.current = {
 					position: anchorRef.current.position,
 					time: performance.now(),
 				};
+
+				dispatch({ type: "UPDATE_PLAY_STATUS", payload: playing });
 			},
 		);
 
@@ -89,55 +170,59 @@ export const TaskbarLyricApp = () => {
 			},
 		);
 
+		const unlistenTheme = listen<TaskbarLyricThemePayload>(
+			THEME_EVENT,
+			(evt) => {
+				dispatch({ type: "UPDATE_THEME", payload: evt.payload.theme });
+			},
+		);
+
 		return () => {
 			unlistenMetadata.then((fn) => fn());
 			unlistenPlayStatus.then((fn) => fn());
 			unlistenPosition.then((fn) => fn());
+			unlistenTheme.then((fn) => fn());
 		};
 	}, [updateAnchor]);
 
 	useEffect(() => {
+		if (!state.musicPlaying) return;
+
 		let rafId: number;
 		const onFrame = () => {
-			if (playingRef.current) {
-				const elapsed = performance.now() - anchorRef.current.time;
-				setPosition(anchorRef.current.position + elapsed);
-			}
+			const elapsed = performance.now() - anchorRef.current.time;
+			const currentPos = anchorRef.current.position + elapsed;
+			positionRef.current = currentPos;
+
+			const effectivePosition = currentPos + LYRIC_OFFSET;
+			const nextIndex = findCurrentLyricIndex(
+				lyricLinesRef.current,
+				effectivePosition,
+			);
+
+			dispatch({ type: "UPDATE_INDEX", payload: nextIndex });
+
 			rafId = requestAnimationFrame(onFrame);
 		};
-		rafId = requestAnimationFrame(onFrame);
-		return () => cancelAnimationFrame(rafId);
-	}, []);
 
-	const LYRIC_OFFSET = 300;
-	const effectivePosition = position + LYRIC_OFFSET;
+		rafId = requestAnimationFrame(onFrame);
+
+		return () => cancelAnimationFrame(rafId);
+	}, [state.musicPlaying]);
+
+	const {
+		musicName,
+		musicArtists,
+		musicCover,
+		musicCoverIsVideo,
+		lyricLines,
+		currentLyricIndex,
+		jumpState,
+		theme,
+	} = state;
 
 	const hasLyrics = lyricLines.length > 0;
-	const firstLyricTime = hasLyrics
-		? lyricLines[0].startTime
-		: Number.MAX_SAFE_INTEGER;
-
-	const isMetadataMode = effectivePosition < firstLyricTime || !hasLyrics;
-	const currentLyricIndex = useMemo(
-		() => findCurrentLyricIndex(lyricLines, effectivePosition),
-		[lyricLines, effectivePosition],
-	);
-
-	let currentJumpId = jumpState.jumpId;
-	if (isMetadataMode) {
-		if (jumpState.lastIndex !== -1) {
-			setJumpState({ lastIndex: -1, jumpId: 0 });
-		}
-	} else {
-		if (currentLyricIndex !== jumpState.lastIndex) {
-			const isJump =
-				jumpState.lastIndex !== -1 &&
-				currentLyricIndex !== jumpState.lastIndex + 1;
-			currentJumpId = isJump ? jumpState.jumpId + 1 : jumpState.jumpId;
-
-			setJumpState({ lastIndex: currentLyricIndex, jumpId: currentJumpId });
-		}
-	}
+	const isMetadataMode = currentLyricIndex < 0 || !hasLyrics;
 
 	const currentLine =
 		currentLyricIndex >= 0 ? lyricLines[currentLyricIndex] : null;
@@ -150,7 +235,7 @@ export const TaskbarLyricApp = () => {
 		? `meta-${musicName}-${musicArtists}`
 		: hasSubLyric
 			? `lyrics-group-${musicName}-${currentLyricIndex}`
-			: `lyrics-${musicName}-${currentJumpId}`;
+			: `lyrics-${musicName}-${jumpState.jumpId}`;
 
 	const lyricItems: LyricItem[] = useMemo(() => {
 		if (isMetadataMode) return [];
@@ -190,106 +275,146 @@ export const TaskbarLyricApp = () => {
 		invoke("set_click_interception", { intercept: true }).catch(console.error);
 	};
 
-	const handleMouseLeave = (_e: React.MouseEvent) => {
+	const handleMouseLeave = () => {
 		invoke("set_click_interception", { intercept: false }).catch(console.error);
 	};
 
-	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: 仅鼠标交互
-		<div
-			className={styles.container}
-			onMouseEnter={handleMouseEnter}
-			onMouseLeave={handleMouseLeave}
-		>
-			<div className={styles.coverWrapper}>
-				{musicCover ? (
-					musicCoverIsVideo ? (
-						<video
-							className={styles.cover}
-							src={musicCover}
-							autoPlay
-							loop
-							muted
-							playsInline
-						/>
-					) : (
-						<img className={styles.cover} src={musicCover} alt="Cover" />
-					)
-				) : (
-					<div className={styles.coverPlaceholder} />
-				)}
-			</div>
+	useEffect(() => {
+		invoke("set_click_interception", { intercept: false }).catch(console.error);
+	}, []);
 
-			<div className={styles.textPanel}>
-				<AnimatePresence>
-					<motion.div
-						key={groupKey}
-						className={styles.groupContainer}
-						initial={{ y: 35, opacity: 0, filter: "blur(4px)" }}
-						animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-						exit={{ y: -15, opacity: 0, filter: "blur(4px)" }}
-						transition={{ type: "spring", stiffness: 250, damping: 30 }}
-					>
+	useEffect(() => {
+		const disableContextMenu = (e: MouseEvent) => {
+			e.preventDefault();
+		};
+
+		document.addEventListener("contextmenu", disableContextMenu);
+
+		return () => {
+			document.removeEventListener("contextmenu", disableContextMenu);
+		};
+	}, []);
+
+	return (
+		<div className={styles.wrapper}>
+			{/** biome-ignore lint/a11y/noStaticElementInteractions: 仅鼠标交互 */}
+			<div
+				className={styles.container}
+				data-theme={theme}
+				onMouseEnter={handleMouseEnter}
+				onMouseLeave={handleMouseLeave}
+			>
+				<div className={styles.coverWrapper}>
+					{musicCover ? (
+						musicCoverIsVideo ? (
+							<video
+								className={styles.cover}
+								src={musicCover}
+								autoPlay
+								loop
+								muted
+								playsInline
+							/>
+						) : (
+							<img className={styles.cover} src={musicCover} alt="Cover" />
+						)
+					) : (
+						<div className={styles.coverPlaceholder} />
+					)}
+				</div>
+
+				<div className={styles.textPanel}>
+					<div className={styles.ghostPanel} aria-hidden="true">
 						{isMetadataMode ? (
 							<>
-								<div
-									className={styles.animatedLine}
-									style={{ transform: "translateY(0px) scale(1)", opacity: 1 }}
-								>
-									{musicName}
-								</div>
-								<div
-									className={styles.animatedLine}
-									style={{
-										transform: "translateY(22px) scale(0.8)",
-										opacity: 0.6,
-									}}
-								>
-									{musicArtists}
-								</div>
+								<div className={styles.ghostLine}>{musicName}</div>
+								<div className={styles.ghostLine}>{musicArtists}</div>
 							</>
 						) : (
-							<AnimatePresence initial={false}>
-								{lyricItems.map((item) => (
-									<motion.div
-										key={item.key}
+							lyricItems.map((item) => (
+								<div key={item.key} className={styles.ghostLine}>
+									{item.text}
+								</div>
+							))
+						)}
+					</div>
+
+					<AnimatePresence>
+						<motion.div
+							key={groupKey}
+							className={styles.groupContainer}
+							initial={{ y: 35, opacity: 0, filter: "blur(4px)" }}
+							animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+							exit={{ y: -15, opacity: 0, filter: "blur(4px)" }}
+							transition={{ type: "spring", stiffness: 250, damping: 30 }}
+						>
+							{isMetadataMode ? (
+								<>
+									<div
 										className={styles.animatedLine}
-										initial={{
-											y: 50,
-											opacity: 0,
-											scale: 0.8,
-											filter: "blur(0px)",
-										}}
-										animate={
-											item.status === "primary"
-												? { y: 0, opacity: 1, scale: 1, filter: "blur(0px)" }
-												: {
-														y: 22,
-														opacity: 0.5,
-														scale: 0.8,
-														filter: "blur(0px)",
-													}
-										}
-										exit={{
-											y: -15,
-											opacity: 0,
-											scale: 1,
-											filter: "blur(4px)",
-										}}
-										transition={{
-											type: "spring",
-											stiffness: 250,
-											damping: 30,
-											mass: 0.8,
+										data-status="primary"
+										style={{
+											transform: "translateY(0px) scale(1)",
+											opacity: 1,
 										}}
 									>
-										{item.text}
-									</motion.div>
-								))}
-							</AnimatePresence>
-						)}
-					</motion.div>
-				</AnimatePresence>
+										{musicName}
+									</div>
+									<div
+										className={styles.animatedLine}
+										data-status="secondary"
+										style={{
+											transform: "translateY(22px) scale(0.85)",
+											opacity: 1,
+										}}
+									>
+										{musicArtists}
+									</div>
+								</>
+							) : (
+								<AnimatePresence initial={false}>
+									{lyricItems.map((item) => (
+										<motion.div
+											key={item.key}
+											className={styles.animatedLine}
+											data-status={item.status}
+											initial={{
+												y: 50,
+												opacity: 0,
+												scale: 0.8,
+												filter: "blur(0px)",
+											}}
+											animate={
+												item.status === "primary"
+													? { y: 0, opacity: 1, scale: 1, filter: "blur(0px)" }
+													: {
+															y: 22,
+															opacity: 1,
+															scale: 0.8,
+															filter: "blur(0px)",
+														}
+											}
+											exit={{
+												y: -15,
+												opacity: 0,
+												scale: 1,
+												filter: "blur(4px)",
+											}}
+											transition={{
+												type: "spring",
+												stiffness: 250,
+												damping: 30,
+												mass: 0.8,
+											}}
+										>
+											{item.text}
+										</motion.div>
+									))}
+								</AnimatePresence>
+							)}
+						</motion.div>
+					</AnimatePresence>
+				</div>
 			</div>
 		</div>
 	);

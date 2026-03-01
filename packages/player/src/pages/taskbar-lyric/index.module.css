@@ -1,22 +1,45 @@
+.wrapper {
+	height: 100vh;
+	justify-content: left;
+	pointer-events: none;
+}
+
 .container {
-	width: 100%;
+	min-width: 250px;
+	width: max-content;
 	height: 100%;
 	display: flex;
 	align-items: center;
 	padding: 4px 8px;
 	box-sizing: border-box;
-	background: rgba(0, 0, 0, 0.4);
+	background: transparent;
 	border-radius: 8px;
 	overflow: hidden;
 	font-family: Misans, "Segoe UI", "Microsoft YaHei", sans-serif;
+
+	transition:
+		background 0.3s ease,
+		opacity 0.15s ease;
+
+	pointer-events: auto;
 }
 
-.groupContainer {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
+.container:hover {
+	background: var(--container-bg);
+}
+
+.container:active {
+	opacity: 0.8;
+}
+
+.container[data-theme="light"] {
+	--text-primary: #1a1a1a;
+	--text-secondary: rgba(0, 0, 0, 0.6);
+	--text-shadow: 0px 1px 3px rgba(255, 255, 255, 0.8);
+
+	--container-bg: rgba(255, 255, 255, 0.4);
+	--cover-placeholder-bg: linear-gradient(135deg, #e0e0e0, #c0c0c0);
+	--cover-wrapper-bg: rgba(0, 0, 0, 0.05);
 }
 
 .coverWrapper {
@@ -25,7 +48,7 @@
 	border-radius: 6px;
 	overflow: hidden;
 	flex-shrink: 0;
-	background: rgba(255, 255, 255, 0.1);
+	background: var(--cover-wrapper-bg);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -41,15 +64,34 @@
 .coverPlaceholder {
 	width: 100%;
 	height: 100%;
-	background: linear-gradient(135deg, #444, #222);
+	background: var(--cover-placeholder-bg);
 }
 
 .textPanel {
 	position: relative;
 	height: 40px;
 	margin-left: 12px;
-	flex-grow: 1;
 	overflow: hidden;
+}
+
+.ghostPanel {
+	display: flex;
+	flex-direction: column;
+	opacity: 0;
+	pointer-events: none;
+	visibility: hidden;
+}
+
+.ghostLine {
+	padding-right: 12px;
+}
+
+.groupContainer {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
 }
 
 .animatedLine {
@@ -57,12 +99,19 @@
 	left: 0;
 	top: 0;
 	width: 100%;
-	color: white;
+	color: var(--text-primary);
 	line-height: 1.2;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	text-shadow: 0px 1px 3px rgba(0, 0, 0, 0.6);
+	text-shadow: var(--text-shadow);
 	transform-origin: left top;
-	will-change: transform, opacity, filter;
+	will-change: transform, opacity, filter, color;
+	transition:
+		color 0.3s ease,
+		text-shadow 0.3s ease;
+}
+
+.animatedLine[data-status="secondary"] {
+	color: var(--text-secondary);
 }

@@ -33,9 +33,14 @@ export interface TaskbarLyricPositionPayload {
 	position: number;
 }
 
+export interface TaskbarLyricThemePayload {
+	theme: "dark" | "light";
+}
+
 export const METADATA_EVENT = "taskbar-lyric:metadata";
 export const PLAY_STATUS_EVENT = "taskbar-lyric:play-status";
 export const POSITION_EVENT = "taskbar-lyric:position";
+export const THEME_EVENT = "taskbar-lyric:theme";
 
 export const TaskbarLyricBridge: FC = () => {
 	const musicName = useAtomValue(musicNameAtom);
