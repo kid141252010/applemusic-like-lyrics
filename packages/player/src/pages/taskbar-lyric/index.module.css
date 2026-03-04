@@ -51,7 +51,7 @@
 
 	pointer-events: auto;
 
-	gap: 8px;
+	gap: 12px;
 }
 
 .container[data-orientation="vertical"] {
@@ -61,7 +61,7 @@
 	height: max-content;
 	min-width: unset;
 	padding: 8px 4px;
-	gap: 8px;
+	gap: 12px;
 }
 
 .container[data-align="right"] {
@@ -119,10 +119,11 @@
 	display: grid;
 	flex: 1;
 	min-width: 0;
-	overflow: hidden;
 	align-items: center;
 	justify-items: center;
-	padding-left: 5px;
+
+	padding: 2px;
+	margin: -2px;
 
 	-webkit-mask-image:
 		linear-gradient(
@@ -172,6 +173,7 @@
 	grid-area: 1 / 1;
 	position: relative;
 	width: 100%;
+	min-width: 0;
 	height: max-content;
 	display: grid;
 }
@@ -179,6 +181,7 @@
 .container[data-orientation="vertical"] .groupContainer {
 	width: max-content;
 	height: 100%;
+	min-height: 0;
 	display: grid;
 }
 
@@ -190,6 +193,7 @@
 	pointer-events: none;
 	visibility: hidden;
 	min-height: 2.4em;
+	min-width: 0;
 }
 
 .ghostLine {
@@ -223,6 +227,7 @@
 .animatedLine {
 	grid-area: 1 / 1;
 	width: 100%;
+	min-width: 0;
 	color: var(--text-primary);
 	white-space: nowrap;
 	transform-origin: left top;
@@ -232,13 +237,14 @@
 	line-height: 1.2em;
 	height: 1.2em;
 	text-box-trim: trim-both;
+	display: flex;
 }
 
 .container[data-orientation="vertical"] .animatedLine {
 	writing-mode: vertical-rl;
 	text-align: left;
-	width: max-content;
-	height: max-content;
+	width: 100%;
+	height: 100%;
 	transform-origin: top right;
 }
 
@@ -255,8 +261,41 @@
 .container[data-align="right"] .animatedLine {
 	text-align: right;
 	transform-origin: right top;
+	justify-self: end;
+	justify-content: flex-end;
 }
 
 .animatedLine[data-status="secondary"] {
 	color: var(--text-secondary);
+	width: calc(100% / 0.8);
+}
+
+.scrollViewport {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	min-width: 0;
+}
+
+.scrollViewport[data-align="right"] {
+	justify-content: flex-end;
+}
+
+.container[data-orientation="vertical"] .scrollViewport {
+	height: 100%;
+	max-height: 100%;
+	flex-direction: column;
+}
+
+.scrollContent {
+	display: inline-block;
+	white-space: nowrap;
+	will-change: transform;
+	width: max-content;
+	height: max-content;
+}
+
+.container[data-orientation="vertical"] .scrollContent {
+	writing-mode: vertical-rl;
 }

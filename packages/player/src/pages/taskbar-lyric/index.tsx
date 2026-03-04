@@ -23,6 +23,7 @@ import {
 	THEME_EVENT,
 } from "../../components/TaskbarLyricBridge/index.tsx";
 import styles from "./index.module.css";
+import { LyricScroll } from "./LyricScroll.tsx";
 
 const LYRIC_OFFSET = 300;
 
@@ -51,6 +52,10 @@ type LyricItem = {
 	key: string;
 	text: string;
 	status: "primary" | "secondary";
+	startTime?: number;
+	endTime?: number;
+	nextStartTime?: number;
+	isActive: boolean;
 };
 
 interface AppState {
@@ -144,6 +149,21 @@ export const TaskbarLyricApp = () => {
 	);
 	const positionRef = useRef(0);
 	const anchorRef = useRef({ position: 0, time: performance.now() });
+
+	const progressSubscribersRef = useRef<Set<(progress: number) => void>>(
+		new Set(),
+	);
+	const publishProgress = useCallback((progress: number) => {
+		progressSubscribersRef.current.forEach((cb) => {
+			cb(progress);
+		});
+	}, []);
+	const subscribeProgress = useCallback((cb: (progress: number) => void) => {
+		progressSubscribersRef.current.add(cb);
+		return () => {
+			progressSubscribersRef.current.delete(cb);
+		};
+	}, []);
 
 	const lyricLinesRef = useRef<LyricLine[]>([]);
 	useEffect(() => {
@@ -306,10 +326,19 @@ export const TaskbarLyricApp = () => {
 		if (isMetadataMode) return [];
 		const items: LyricItem[] = [];
 		if (currentLyricIndex >= 0 && currentLine) {
+			const nextLine =
+				currentLyricIndex + 1 < lyricLines.length
+					? lyricLines[currentLyricIndex + 1]
+					: undefined;
+
 			items.push({
 				key: `lyric-${currentLyricIndex}`,
 				text: getLyricText(currentLine),
 				status: "primary",
+				startTime: currentLine.startTime,
+				endTime: currentLine.endTime,
+				nextStartTime: nextLine?.startTime,
+				isActive: true,
 			});
 
 			if (hasSubLyric) {
@@ -317,12 +346,25 @@ export const TaskbarLyricApp = () => {
 					key: `lyric-${currentLyricIndex}-sub`,
 					text: subLyricText,
 					status: "secondary",
+					startTime: currentLine.startTime,
+					endTime: currentLine.endTime,
+					nextStartTime: nextLine?.startTime,
+					isActive: true,
 				});
-			} else if (currentLyricIndex + 1 < lyricLines.length) {
+			} else if (nextLine) {
+				const nextNextLine =
+					currentLyricIndex + 2 < lyricLines.length
+						? lyricLines[currentLyricIndex + 2]
+						: undefined;
+
 				items.push({
 					key: `lyric-${currentLyricIndex + 1}`,
-					text: getLyricText(lyricLines[currentLyricIndex + 1]),
+					text: getLyricText(nextLine),
 					status: "secondary",
+					startTime: nextLine.startTime,
+					endTime: nextLine.endTime,
+					nextStartTime: nextNextLine?.startTime,
+					isActive: false,
 				});
 			}
 		}
@@ -477,7 +519,7 @@ export const TaskbarLyricApp = () => {
 												item.status === "primary"
 													? {
 															x: isVert ? "-0.2em" : 0,
-															y: isVert ? 0 : isSingleLine ? "0.3em" : 0,
+															y: isVert ? 0 : isSingleLine ? "0.5em" : 0,
 															opacity: 1,
 															scale: 1,
 															filter: "blur(0px)",
@@ -504,7 +546,28 @@ export const TaskbarLyricApp = () => {
 												mass: 0.8,
 											}}
 										>
-											{item.text}
+											<LyricScroll
+												text={item.text}
+												status={item.status}
+												orientation={orientation}
+												align={align}
+												startTime={item.startTime}
+												endTime={item.endTime}
+												nextStartTime={item.nextStartTime}
+												isActive={item.isActive}
+												isPlaying={state.musicPlaying}
+												getCurrentPosition={() => positionRef.current}
+												onProgress={
+													item.status === "primary"
+														? publishProgress
+														: undefined
+												}
+												subscribeProgress={
+													item.status === "secondary"
+														? subscribeProgress
+														: undefined
+												}
+											/>
 										</motion.div>
 									))}
 								</AnimatePresence>
