@@ -18,19 +18,26 @@ import IconPlay from "../../assets/icon_play.svg?react";
 import IconRewind from "../../assets/icon_rewind.svg?react";
 import {
 	ALIGN_EVENT,
+	CMD_GET_SYSTEM_THEME,
+	CMD_SET_CLICK_INTERCEPTION,
 	CTRL_NEXT_EVENT,
 	CTRL_PLAY_OR_RESUME_EVENT,
 	CTRL_PREV_EVENT,
 	METADATA_EVENT,
 	PLAY_STATUS_EVENT,
 	POSITION_EVENT,
+	REQUEST_UPDATE_EVENT,
+	SYSTEM_THEME_CHANGED_EVENT,
+	type SystemThemeChangedPayload,
+	TASKBAR_LAYOUT_EXTRA_EVENT,
+	type TaskbarLayoutExtraPayload,
 	type TaskbarLyricAlignmentPayload,
 	type TaskbarLyricMetadataPayload,
 	type TaskbarLyricPlayStatusPayload,
 	type TaskbarLyricPositionPayload,
 	type TaskbarLyricThemePayload,
 	THEME_EVENT,
-} from "../../components/TaskbarLyricBridge/index.tsx";
+} from "../../components/TaskbarLyricBridge/types.ts";
 import styles from "./index.module.css";
 import { LyricScroll } from "./LyricScroll.tsx";
 
@@ -196,6 +203,25 @@ export const TaskbarLyricApp = () => {
 		dispatch({ type: "UPDATE_INDEX", payload: nextIndex });
 	}, []);
 
+	const fetchSystemTheme = async (): Promise<"light" | "dark"> => {
+		try {
+			const payload =
+				await invoke<SystemThemeChangedPayload>(CMD_GET_SYSTEM_THEME);
+			return payload.isLightTheme ? "light" : "dark";
+		} catch (err) {
+			console.error("获取系统初始主题失败", err);
+			return "light";
+		}
+	};
+
+	const setClickInterception = (intercept: boolean) => {
+		invoke(CMD_SET_CLICK_INTERCEPTION, {
+			intercept,
+		}).catch((err) => {
+			console.error(`设置鼠标拦截状态 ${intercept} 失败:`, err);
+		});
+	};
+
 	useEffect(() => {
 		const handleResize = () => {
 			if (window.innerHeight > window.innerWidth) {
@@ -211,6 +237,16 @@ export const TaskbarLyricApp = () => {
 		return () => {
 			window.removeEventListener("resize", handleResize);
 		};
+	}, []);
+
+	useEffect(() => {
+		emit(REQUEST_UPDATE_EVENT).catch((err) => {
+			console.error("请求任务栏歌词数据更新失败:", err);
+		});
+
+		fetchSystemTheme().then((theme) => {
+			dispatch({ type: "UPDATE_THEME", payload: theme });
+		});
 	}, []);
 
 	useEffect(() => {
@@ -253,18 +289,18 @@ export const TaskbarLyricApp = () => {
 			(evt) => dispatch({ type: "UPDATE_ALIGN", payload: evt.payload.align }),
 		);
 
-		const unlistenLayoutExtra = listen<{
-			isCentered: boolean;
-			systemType: string;
-		}>("taskbar-layout-extra", (evt) => {
-			dispatch({
-				type: "UPDATE_ALIGN",
-				payload: evt.payload.isCentered ? "left" : "right",
-			});
-		});
+		const unlistenLayoutExtra = listen<TaskbarLayoutExtraPayload>(
+			TASKBAR_LAYOUT_EXTRA_EVENT,
+			(evt) => {
+				dispatch({
+					type: "UPDATE_ALIGN",
+					payload: evt.payload.isCentered ? "left" : "right",
+				});
+			},
+		);
 
-		const unlistenSystemTheme = listen<{ isLightTheme: boolean }>(
-			"system-theme-changed",
+		const unlistenSystemTheme = listen<SystemThemeChangedPayload>(
+			SYSTEM_THEME_CHANGED_EVENT,
 			(evt) => {
 				dispatch({
 					type: "UPDATE_THEME",
@@ -396,13 +432,17 @@ export const TaskbarLyricApp = () => {
 
 	const handleMouseEnter = () => {
 		setIsHovered(true);
-		invoke("set_click_interception", { intercept: true }).catch(console.error);
+		setClickInterception(true);
 	};
 
 	const handleMouseLeave = () => {
 		setIsHovered(false);
-		invoke("set_click_interception", { intercept: false }).catch(console.error);
+		setClickInterception(false);
 	};
+
+	useEffect(() => {
+		setClickInterception(false);
+	}, []);
 
 	const handlePrev = (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -418,10 +458,6 @@ export const TaskbarLyricApp = () => {
 		e.stopPropagation();
 		emit(CTRL_NEXT_EVENT).catch(console.error);
 	};
-
-	useEffect(() => {
-		invoke("set_click_interception", { intercept: false }).catch(console.error);
-	}, []);
 
 	useEffect(() => {
 		const disableContextMenu = (e: MouseEvent) => {

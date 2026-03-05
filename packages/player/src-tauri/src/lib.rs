@@ -339,7 +339,9 @@ pub fn run() {
             #[cfg(target_os = "windows")]
             taskbar_lyric::mouse_forward::set_forwarding_enabled,
             #[cfg(target_os = "windows")]
-            taskbar_lyric::mouse_forward::stop_mouse_hook
+            taskbar_lyric::mouse_forward::stop_mouse_hook,
+            #[cfg(target_os = "windows")]
+            theme_watcher::get_system_theme
         ])
         .setup(|app| {
             player::init_local_player(app.handle().clone());

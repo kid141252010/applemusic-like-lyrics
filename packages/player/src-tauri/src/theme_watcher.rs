@@ -15,8 +15,8 @@ use windows::{
         System::{
             Registry::{
                 HKEY, HKEY_CURRENT_USER, KEY_NOTIFY, KEY_READ, REG_DWORD,
-                REG_NOTIFY_CHANGE_LAST_SET, RegCloseKey, RegNotifyChangeKeyValue, RegOpenKeyExW,
-                RegQueryValueExW,
+                REG_NOTIFY_CHANGE_LAST_SET, REG_SAM_FLAGS, RegCloseKey, RegNotifyChangeKeyValue,
+                RegOpenKeyExW, RegQueryValueExW,
             },
             Threading::{CreateEventW, INFINITE, SetEvent, WaitForMultipleObjects},
         },
@@ -110,31 +110,24 @@ impl ThemeWatcher {
     unsafe fn watch_loop(stop_event_wrapper: &Arc<EventHandle>, app: &AppHandle) {
         let stop_event = stop_event_wrapper.0;
 
-        let mut h_key = HKEY::default();
-
-        unsafe {
-            if RegOpenKeyExW(
-                HKEY_CURRENT_USER,
-                PERSONALIZE_SUB_KEY,
-                Some(0),
-                KEY_READ | KEY_NOTIFY,
-                &raw mut h_key,
-            )
-            .is_err()
-            {
+        let h_key = match Self::open_personalize_key(KEY_READ | KEY_NOTIFY) {
+            Some(k) => k,
+            None => {
                 error!("打开注册表键失败");
                 return;
             }
+        };
 
-            if let Some(is_light) = Self::read_light_theme_value(h_key) {
-                let _ = app.emit(
-                    EVENT_NAME,
-                    ThemePayload {
-                        is_light_theme: is_light,
-                    },
-                );
-            }
+        if let Some(is_light) = Self::read_light_theme_value(h_key) {
+            let _ = app.emit(
+                EVENT_NAME,
+                ThemePayload {
+                    is_light_theme: is_light,
+                },
+            );
+        }
 
+        unsafe {
             let reg_event = match CreateEventW(None, false, false, None) {
                 Ok(evt) => evt,
                 Err(e) => {
@@ -188,10 +181,43 @@ impl ThemeWatcher {
             let _ = RegCloseKey(h_key);
         }
     }
+
+    fn open_personalize_key(access_mask: REG_SAM_FLAGS) -> Option<HKEY> {
+        let mut h_key = HKEY::default();
+        let result = unsafe {
+            RegOpenKeyExW(
+                HKEY_CURRENT_USER,
+                PERSONALIZE_SUB_KEY,
+                Some(0),
+                access_mask,
+                &raw mut h_key,
+            )
+        };
+
+        if result.is_ok() { Some(h_key) } else { None }
+    }
 }
 
 impl Drop for ThemeWatcher {
     fn drop(&mut self) {
         self.stop();
     }
+}
+
+#[tauri::command]
+pub fn get_system_theme() -> Result<ThemePayload, String> {
+    let mut is_light = true;
+
+    if let Some(h_key) = ThemeWatcher::open_personalize_key(KEY_READ) {
+        if let Some(light) = ThemeWatcher::read_light_theme_value(h_key) {
+            is_light = light;
+        }
+        unsafe {
+            let _ = RegCloseKey(h_key);
+        }
+    }
+
+    Ok(ThemePayload {
+        is_light_theme: is_light,
+    })
 }

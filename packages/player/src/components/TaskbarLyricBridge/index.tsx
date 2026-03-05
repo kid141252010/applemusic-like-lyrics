@@ -1,6 +1,4 @@
-import type { LyricLine } from "@applemusic-like-lyrics/core";
 import {
-	type ArtistStateEntry,
 	musicAlbumNameAtom,
 	musicArtistsAtom,
 	musicCoverAtom,
@@ -17,41 +15,18 @@ import {
 import { emit, listen } from "@tauri-apps/api/event";
 import { useAtomValue } from "jotai";
 import { type FC, useEffect, useRef } from "react";
-
-export interface TaskbarLyricMetadataPayload {
-	musicName: string;
-	musicArtists: ArtistStateEntry[];
-	musicAlbumName: string;
-	musicDuration: number;
-	lyricLines: LyricLine[];
-	musicCover: string;
-	musicCoverIsVideo: boolean;
-}
-
-export interface TaskbarLyricPlayStatusPayload {
-	musicPlaying: boolean;
-}
-
-export interface TaskbarLyricPositionPayload {
-	position: number;
-}
-
-export interface TaskbarLyricThemePayload {
-	theme: "dark" | "light";
-}
-
-export interface TaskbarLyricAlignmentPayload {
-	align: "left" | "right";
-}
-
-export const METADATA_EVENT = "taskbar-lyric:metadata";
-export const PLAY_STATUS_EVENT = "taskbar-lyric:play-status";
-export const POSITION_EVENT = "taskbar-lyric:position";
-export const THEME_EVENT = "taskbar-lyric:theme";
-export const ALIGN_EVENT = "taskbar-lyric:alignment";
-export const CTRL_PREV_EVENT = "taskbar-lyric:ctrl-prev";
-export const CTRL_PLAY_OR_RESUME_EVENT = "taskbar-lyric:ctrl-play-or-resume";
-export const CTRL_NEXT_EVENT = "taskbar-lyric:ctrl-next";
+import {
+	CTRL_NEXT_EVENT,
+	CTRL_PLAY_OR_RESUME_EVENT,
+	CTRL_PREV_EVENT,
+	METADATA_EVENT,
+	PLAY_STATUS_EVENT,
+	POSITION_EVENT,
+	REQUEST_UPDATE_EVENT,
+	type TaskbarLyricMetadataPayload,
+	type TaskbarLyricPlayStatusPayload,
+	type TaskbarLyricPositionPayload,
+} from "./types";
 
 export const TaskbarLyricBridge: FC = () => {
 	const musicName = useAtomValue(musicNameAtom);
@@ -68,6 +43,12 @@ export const TaskbarLyricBridge: FC = () => {
 	const onPlayOrResume = useAtomValue(onPlayOrResumeAtom).onEmit;
 	const onRequestNextSong = useAtomValue(onRequestNextSongAtom).onEmit;
 
+	const stateCache = useRef({
+		metadata: {} as TaskbarLyricMetadataPayload,
+		playStatus: {} as TaskbarLyricPlayStatusPayload,
+		position: {} as TaskbarLyricPositionPayload,
+	});
+
 	useEffect(() => {
 		const payload: TaskbarLyricMetadataPayload = {
 			musicName,
@@ -78,6 +59,7 @@ export const TaskbarLyricBridge: FC = () => {
 			musicCover,
 			musicCoverIsVideo,
 		};
+		stateCache.current.metadata = payload;
 		emit(METADATA_EVENT, payload).catch(console.error);
 	}, [
 		musicName,
@@ -91,6 +73,7 @@ export const TaskbarLyricBridge: FC = () => {
 
 	useEffect(() => {
 		const payload: TaskbarLyricPlayStatusPayload = { musicPlaying };
+		stateCache.current.playStatus = payload;
 		emit(PLAY_STATUS_EVENT, payload).catch(console.error);
 	}, [musicPlaying]);
 
@@ -102,8 +85,25 @@ export const TaskbarLyricBridge: FC = () => {
 		const payload: TaskbarLyricPositionPayload = {
 			position: musicPlayingPosition,
 		};
+		stateCache.current.position = payload;
 		emit(POSITION_EVENT, payload).catch(console.error);
 	}, [musicPlayingPosition]);
+
+	useEffect(() => {
+		const unlistenRequest = listen(REQUEST_UPDATE_EVENT, () => {
+			if (stateCache.current.metadata.musicName !== undefined) {
+				emit(METADATA_EVENT, stateCache.current.metadata).catch(console.error);
+				emit(PLAY_STATUS_EVENT, stateCache.current.playStatus).catch(
+					console.error,
+				);
+				emit(POSITION_EVENT, stateCache.current.position).catch(console.error);
+			}
+		});
+
+		return () => {
+			unlistenRequest.then((fn) => fn());
+		};
+	}, []);
 
 	useEffect(() => {
 		const unlistenPrev = listen(CTRL_PREV_EVENT, () => {
