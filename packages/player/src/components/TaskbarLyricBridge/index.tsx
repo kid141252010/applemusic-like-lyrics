@@ -12,6 +12,7 @@ import {
 	onRequestNextSongAtom,
 	onRequestPrevSongAtom,
 } from "@applemusic-like-lyrics/react-full";
+import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { useAtomValue } from "jotai";
 import { type FC, useEffect, useRef } from "react";
@@ -48,6 +49,13 @@ export const TaskbarLyricBridge: FC = () => {
 		playStatus: {} as TaskbarLyricPlayStatusPayload,
 		position: {} as TaskbarLyricPositionPayload,
 	});
+
+	useEffect(() => {
+		invoke("open_taskbar_lyric").catch(console.error);
+		return () => {
+			invoke("close_taskbar_lyric").catch(console.error);
+		};
+	}, []);
 
 	useEffect(() => {
 		const payload: TaskbarLyricMetadataPayload = {

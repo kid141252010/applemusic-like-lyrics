@@ -341,13 +341,19 @@ pub fn run() {
             #[cfg(target_os = "windows")]
             taskbar_lyric::mouse_forward::stop_mouse_hook,
             #[cfg(target_os = "windows")]
+            taskbar_lyric::close_taskbar_lyric,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::open_taskbar_lyric,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::open_taskbar_lyric_devtools,
+            #[cfg(target_os = "windows")]
             theme_watcher::get_system_theme
         ])
         .setup(|app| {
             player::init_local_player(app.handle().clone());
 
             #[cfg(target_os = "windows")]
-            taskbar_lyric::init_taskbar_lyric(app.handle());
+            app.manage(taskbar_lyric::TaskbarLyricState::default());
 
             #[cfg(target_os = "windows")]
             {

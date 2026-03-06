@@ -19,9 +19,10 @@ pub struct TaskbarLyricWatchers {
     pub reg: Option<taskbar_lyric::RegistryWatcher>,
 }
 
+#[derive(Default)]
 pub struct TaskbarLyricState {
-    pub service: std::sync::Mutex<Option<taskbar_lyric::TaskbarService>>,
-    pub watchers: std::sync::Mutex<Option<TaskbarLyricWatchers>>,
+    pub service: Mutex<Option<taskbar_lyric::TaskbarService>>,
+    pub watchers: Mutex<Option<TaskbarLyricWatchers>>,
 }
 
 #[derive(Clone, Serialize)]
@@ -31,7 +32,31 @@ pub struct TaskbarLayoutExtraPayload {
     pub system_type: String,
 }
 
-pub fn init_taskbar_lyric(app: &tauri::AppHandle) {
+#[tauri::command]
+pub fn close_taskbar_lyric(app: tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("taskbar-lyric") {
+        mouse_forward::stop_mouse_hook();
+        if let Some(state) = app.try_state::<TaskbarLyricState>() {
+            let _ = state.watchers.lock().unwrap().take();
+            let _ = state.service.lock().unwrap().take();
+        }
+        let _ = win.destroy();
+    }
+}
+
+#[tauri::command]
+pub fn open_taskbar_lyric_devtools(app: tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("taskbar-lyric") {
+        win.open_devtools();
+    }
+}
+
+#[tauri::command]
+pub fn open_taskbar_lyric(app: tauri::AppHandle) {
+    if app.get_webview_window("taskbar-lyric").is_some() {
+        return;
+    }
+
     let app_clone = app.clone();
     let service = TaskbarService::new(move |layout| {
         if let Some(win) = app_clone.get_webview_window("taskbar-lyric") {
@@ -66,6 +91,10 @@ pub fn init_taskbar_lyric(app: &tauri::AppHandle) {
             }
         }
     });
+
+    if let Some(state) = app.try_state::<TaskbarLyricState>() {
+        *state.service.lock().unwrap() = Some(service);
+    }
 
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -149,9 +178,6 @@ pub fn init_taskbar_lyric(app: &tauri::AppHandle) {
                     });
 
                     let _ = win.show();
-
-                    // #[cfg(debug_assertions)]
-                    // win.open_devtools();
                 }
             } else {
                 tracing::warn!("Failed to get hwnd for taskbar-lyric window");
@@ -159,10 +185,5 @@ pub fn init_taskbar_lyric(app: &tauri::AppHandle) {
         } else {
             tracing::warn!("Failed to build taskbar-lyric window");
         }
-    });
-
-    app.manage::<TaskbarLyricState>(TaskbarLyricState {
-        service: Mutex::new(Some(service)),
-        watchers: Mutex::new(None),
     });
 }

@@ -343,6 +343,14 @@
 					"description": "目前只支持 Windows 的 SMTC",
 					"label": "启用内置播放器的媒体控件"
 				}
+			},
+			"taskbarLyric": {
+				"enable": {
+					"description": "Display the lyrics of the currently playing song on the Windows taskbar.",
+					"label": "Enable taskbar lyrics"
+				},
+				"openDevtools": "Open DevTools",
+				"subtitle": "Taskbar Lyrics"
 			}
 		},
 		"song": {

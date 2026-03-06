@@ -55,6 +55,7 @@ import {
 	type TextProps,
 } from "@radix-ui/themes";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 import { atom, useAtom, useAtomValue, type WritableAtom } from "jotai";
 import { loadable } from "jotai/utils";
 import React, {
@@ -74,6 +75,7 @@ import {
 	DarkMode,
 	darkModeAtom,
 	enableMediaControlsAtom,
+	enableTaskbarLyricAtom,
 	showStatJSFrameAtom,
 	updateInfoAtom,
 } from "../../states/appAtoms.ts";
@@ -1073,6 +1075,37 @@ const OthersSettings = () => {
 	);
 };
 
+const TaskbarLyricSettings = () => {
+	const { t } = useTranslation();
+	const [enabled, setEnabled] = useAtom(enableTaskbarLyricAtom);
+
+	return (
+		<>
+			<SubTitle>
+				{t("page.settings.taskbarLyric.subtitle", "任务栏歌词")}
+			</SubTitle>
+			<SettingEntry
+				label={t("page.settings.taskbarLyric.enable.label", "启用任务栏歌词")}
+				description={t(
+					"page.settings.taskbarLyric.enable.description",
+					"在 Windows 任务栏上显示当前播放的歌词",
+				)}
+			>
+				<Switch checked={enabled} onCheckedChange={setEnabled} />
+			</SettingEntry>
+			{import.meta.env.DEV && (
+				<Button
+					my="2"
+					variant="soft"
+					onClick={() => invoke("open_taskbar_lyric_devtools")}
+				>
+					{t("page.settings.taskbarLyric.openDevtools", "打开 DevTools")}
+				</Button>
+			)}
+		</>
+	);
+};
+
 const AboutSettings = () => {
 	const { t } = useTranslation();
 	const updateInfo = useAtomValue(updateInfoAtom);
@@ -1204,6 +1237,8 @@ export const PlayerSettingsTab: FC<{ category: string }> = ({ category }) => {
 			return <LyricBackgroundSettings />;
 		case "others":
 			return <OthersSettings />;
+		case "taskbarLyric":
+			return <TaskbarLyricSettings />;
 		case "about":
 			return <AboutSettings />;
 		default:

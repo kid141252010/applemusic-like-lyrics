@@ -88,4 +88,9 @@ export const updateInfoAtom = atom<Update | false>(false);
 
 export const autoUpdateAtom = atomWithStorage("amll-player.autoUpdate", true);
 
+export const enableTaskbarLyricAtom = atomWithStorage(
+	"amll-player.enableTaskbarLyric",
+	false,
+);
+
 export const audioQualityDialogOpenedAtom = atom(false);
