@@ -1,4 +1,9 @@
 import {
+	currentPlaylistAtom,
+	currentPlaylistMusicIndexAtom,
+	musicPlayingPositionAtom,
+} from "@applemusic-like-lyrics/react-full";
+import {
 	ArrowLeftIcon,
 	Pencil1Icon,
 	PlayIcon,
@@ -20,6 +25,7 @@ import { stat } from "@tauri-apps/plugin-fs";
 import { platform } from "@tauri-apps/plugin-os";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion, useMotionTemplate, useScroll } from "framer-motion";
+import { useSetAtom } from "jotai";
 import md5 from "md5";
 import { type FC, useCallback, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
@@ -103,6 +109,10 @@ export const Component: FC = () => {
 	});
 	const playlistCoverSize = useMotionTemplate`clamp(6em,calc(12em - ${playlistViewScroll.scrollY}px),12em)`;
 	const playlistInfoGapSize = useMotionTemplate`clamp(var(--space-1), calc(var(--space-4) - ${playlistViewScroll.scrollY}px / 5), var(--space-4))`;
+
+	const setPlaylist = useSetAtom(currentPlaylistAtom);
+	const setPlayIndex = useSetAtom(currentPlaylistMusicIndexAtom);
+	const setPosition = useSetAtom(musicPlayingPositionAtom);
 
 	const onAddLocalMusics = useCallback(async () => {
 		let filters = [
@@ -261,18 +271,22 @@ export const Component: FC = () => {
 					);
 				});
 			}
-			await emitAudioThread("setPlaylist", {
-				songs: collected.map((v, i) => ({
-					type: "local",
-					filePath: v.filePath,
-					origOrder: i,
-				})),
-			});
-			await emitAudioThread("jumpToSong", {
-				songIndex,
+
+			const newPlaylist = collected.map((v, i) => ({
+				type: "local" as const,
+				filePath: v.filePath,
+				origOrder: i,
+			}));
+
+			setPlaylist(newPlaylist);
+			setPlayIndex(songIndex);
+			setPosition(0);
+
+			await emitAudioThread("playAudio", {
+				song: newPlaylist[songIndex],
 			});
 		},
-		[playlist],
+		[playlist, setPlaylist, setPlayIndex, setPosition],
 	);
 
 	const onDeleteSong = useCallback(

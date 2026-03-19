@@ -44,7 +44,6 @@ import {
 import chalk from "chalk";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
-import md5 from "md5";
 import { type FC, useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "react-toastify";
@@ -56,11 +55,10 @@ import {
 } from "../../states/appAtoms.ts";
 import {
 	type AudioQuality,
+	type AudioThreadEvent,
 	emitAudioThread,
-	emitAudioThreadRet,
 	initAudioThread,
 	listenAudioThreadEvent,
-	type SongData,
 } from "../../utils/player.ts";
 
 export const FFTToLowPassContext: FC = () => {
@@ -536,7 +534,9 @@ export const LocalMusicContext: FC = () => {
 		timestamp: performance.now(),
 	});
 
-	const syncMusicInfo = async (data: any) => {
+	const syncMusicInfo = async (
+		data: Extract<AudioThreadEvent, { type: "loadAudio" }>["data"],
+	) => {
 		if (!data || !data.musicInfo) {
 			console.error("[syncMusicInfo] Invalid data, aborting.");
 			return;
@@ -588,22 +588,17 @@ export const LocalMusicContext: FC = () => {
 					URL.revokeObjectURL(oldUrl);
 				}
 
-				if (data.musicInfo.cover && data.musicInfo.cover.length > 0) {
-					const blob = new Blob([new Uint8Array(data.musicInfo.cover)], {
-						type: data.musicInfo.coverMediaType || "image/jpeg",
-					});
-					const url = URL.createObjectURL(blob);
-					store.set(musicCoverAtom, url);
-					store.set(musicCoverIsVideoAtom, false);
-				} else {
-					store.set(
-						musicCoverAtom,
-						"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-					);
-					store.set(musicCoverIsVideoAtom, false);
-				}
+				store.set(
+					musicCoverAtom,
+					"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+				);
+				store.set(musicCoverIsVideoAtom, false);
 			}
-			store.set(musicDurationAtom, (data.duration * 1000) | 0);
+			if (data.musicInfo?.duration) {
+				store.set(musicDurationAtom, (data.musicInfo.duration * 1000) | 0);
+			} else if (songFromDb?.duration) {
+				store.set(musicDurationAtom, (songFromDb.duration * 1000) | 0);
+			}
 		} catch (error) {
 			console.error(
 				"[syncMusicInfo] An error occurred during state update:",
@@ -621,35 +616,6 @@ export const LocalMusicContext: FC = () => {
 			}
 		}
 	}, [musicPlaying, store]);
-
-	const processAndSetPlaylist = async (playlistData: SongData[]) => {
-		if (!playlistData || playlistData.length === 0) {
-			store.set(currentPlaylistAtom, []);
-			return;
-		}
-
-		const fullPlaylistPromises = playlistData.map(
-			async (songData): Promise<SongData> => {
-				if (songData.type === "local") {
-					const songId = md5(songData.filePath);
-					const songInfoFromDb = await db.songs.get(songId);
-
-					if (songInfoFromDb) {
-						return {
-							type: "custom",
-							id: songInfoFromDb.id,
-							songJsonData: JSON.stringify(songInfoFromDb),
-							origOrder: songData.origOrder,
-						};
-					}
-				}
-				return songData;
-			},
-		);
-
-		const fullPlaylist: SongData[] = await Promise.all(fullPlaylistPromises);
-		store.set(currentPlaylistAtom, fullPlaylist);
-	};
 
 	useEffect(() => {
 		let rafId: number;
@@ -679,19 +645,25 @@ export const LocalMusicContext: FC = () => {
 		initAudioThread();
 		const toEmit = <T,>(onEmit: T) => ({ onEmit });
 
-		const toEmitAndResetProgress = (
-			type: Parameters<typeof emitAudioThread>[0],
-		) => ({
-			onEmit() {
-				lastSyncRef.current = {
-					position: 0,
-					timestamp: performance.now(),
-				};
-				store.set(musicPlayingPositionAtom, 0);
+		const playSongAtIndex = (newIndex: number) => {
+			const playlist = store.get(currentPlaylistAtom);
+			if (!playlist || playlist.length === 0) return;
 
-				emitAudioThread(type);
-			},
-		});
+			let safeIndex = newIndex;
+			if (safeIndex >= playlist.length) safeIndex = 0;
+			if (safeIndex < 0) safeIndex = playlist.length - 1;
+
+			const targetSong = playlist[safeIndex];
+
+			lastSyncRef.current = {
+				position: 0,
+				timestamp: performance.now(),
+			};
+			store.set(musicPlayingPositionAtom, 0);
+			store.set(currentPlaylistMusicIndexAtom, safeIndex);
+
+			emitAudioThread("playAudio", { song: targetSong });
+		};
 
 		store.set(
 			onClickAudioQualityTagAtom,
@@ -707,8 +679,21 @@ export const LocalMusicContext: FC = () => {
 			}),
 		);
 
-		store.set(onRequestNextSongAtom, toEmitAndResetProgress("nextSong"));
-		store.set(onRequestPrevSongAtom, toEmitAndResetProgress("prevSong"));
+		store.set(
+			onRequestNextSongAtom,
+			toEmit(() => {
+				const currentIndex = store.get(currentPlaylistMusicIndexAtom);
+				playSongAtIndex(currentIndex + 1);
+			}),
+		);
+
+		store.set(
+			onRequestPrevSongAtom,
+			toEmit(() => {
+				const currentIndex = store.get(currentPlaylistMusicIndexAtom);
+				playSongAtIndex(currentIndex - 1);
+			}),
+		);
 		store.set(
 			onClickControlThumbAtom,
 			toEmit(() => {
@@ -785,35 +770,45 @@ export const LocalMusicContext: FC = () => {
 					break;
 				}
 
-				case "syncStatus": {
-					const status = evtData.data;
-					setMusicPlaying(status.isPlaying);
+				case "loadAudio": {
+					const data = evtData.data;
 
-					lastSyncRef.current = {
-						position: status.position,
-						timestamp: performance.now(),
-					};
-
-					store.set(musicVolumeAtom, status.volume);
-					store.set(currentPlaylistMusicIndexAtom, status.currentPlayIndex);
-
-					if (status.quality) {
-						const newQualityState = processAudioQuality(status.quality);
-						store.set(musicQualityAtom, newQualityState);
+					if (data.quality) {
+						store.set(musicQualityAtom, processAudioQuality(data.quality));
 					}
-
-					await processAndSetPlaylist(status.playlist);
+					if (data.musicInfo) {
+						store.set(musicDurationAtom, (data.musicInfo.duration * 1000) | 0);
+					}
 
 					const currentMusicId = store.get(musicIdAtom);
-					const newMusicId = status.musicId.startsWith("local:")
-						? status.musicId.substring(6)
-						: status.musicId;
-					if (newMusicId && newMusicId !== currentMusicId) {
-						await syncMusicInfo(status);
-					}
+					const newMusicId = data.musicId?.startsWith("local:")
+						? data.musicId.substring(6)
+						: data.musicId || "";
 
-					store.set(musicDurationAtom, (status.duration * 1000) | 0);
-					store.set(musicPlayingPositionAtom, (status.position * 1000) | 0);
+					if (newMusicId && newMusicId !== currentMusicId) {
+						await syncMusicInfo(data);
+					}
+					break;
+				}
+
+				case "playStatus": {
+					setMusicPlaying(evtData.data.isPlaying);
+					break;
+				}
+
+				case "trackEnded": {
+					const currentIndex = store.get(currentPlaylistMusicIndexAtom);
+					playSongAtIndex(currentIndex + 1);
+					break;
+				}
+
+				case "hardwareMediaCommand": {
+					const currentIndex = store.get(currentPlaylistMusicIndexAtom);
+					if (evtData.data.command === "next") {
+						playSongAtIndex(currentIndex + 1);
+					} else if (evtData.data.command === "prev") {
+						playSongAtIndex(currentIndex - 1);
+					}
 					break;
 				}
 
@@ -838,7 +833,6 @@ export const LocalMusicContext: FC = () => {
 				}
 			}
 		});
-		emitAudioThreadRet("syncStatus");
 
 		return () => {
 			unlistenPromise.then((unlisten) => unlisten());
