@@ -1,21 +1,27 @@
-use crate::server::AMLLWebSocketServer;
+use std::net::SocketAddr;
+
 use amll_player_core::AudioInfo;
 use anyhow::Context;
 use ffmpeg_next as ffmpeg;
 use serde::*;
 use serde_json::Value;
-use std::net::SocketAddr;
-use tauri::ipc::Channel;
 use tauri::{
-    AppHandle, Manager, PhysicalSize, Runtime, Size, State, WebviewWindowBuilder,
+    AppHandle, Manager, PhysicalSize, Runtime, Size, State, WebviewWindowBuilder, ipc::Channel,
     utils::config::WindowEffectsConfig, window::Effect,
 };
 use tokio::sync::RwLock;
 use tracing::*;
 
+use crate::server::AMLLWebSocketServer;
+
 mod player;
 mod screen_capture;
 mod server;
+
+#[cfg(target_os = "windows")]
+mod taskbar_lyric;
+#[cfg(target_os = "windows")]
+mod theme_watcher;
 
 pub type AMLLWebSocketServerWrapper = RwLock<AMLLWebSocketServer>;
 pub type AMLLWebSocketServerState<'r> = State<'r, AMLLWebSocketServerWrapper>;
@@ -262,7 +268,7 @@ fn init_logging() {
     #[cfg(debug_assertions)]
     {
         tracing_subscriber::fmt()
-            .with_env_filter("amll_player=trace,wry=info")
+            .with_env_filter("amll_player=trace,wry=info,taskbar_lyric=trace")
             .with_thread_names(true)
             .with_timer(tracing_subscriber::fmt::time::uptime())
             .init();
@@ -328,9 +334,38 @@ pub fn run() {
             player::set_media_controls_enabled,
             read_local_music_metadata,
             restart_app,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::mouse_forward::set_click_interception,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::mouse_forward::set_forwarding_enabled,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::mouse_forward::stop_mouse_hook,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::close_taskbar_lyric,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::open_taskbar_lyric,
+            #[cfg(target_os = "windows")]
+            taskbar_lyric::open_taskbar_lyric_devtools,
+            #[cfg(target_os = "windows")]
+            theme_watcher::get_system_theme
         ])
         .setup(|app| {
             player::init_local_player(app.handle().clone());
+
+            #[cfg(target_os = "windows")]
+            app.manage(taskbar_lyric::TaskbarLyricState::default());
+
+            #[cfg(target_os = "windows")]
+            {
+                match theme_watcher::ThemeWatcher::new(app.handle().clone()) {
+                    Ok(watcher) => {
+                        app.manage(watcher);
+                    }
+                    Err(e) => {
+                        warn!("启动系统主题监听失败: {e}");
+                    }
+                }
+            }
 
             #[cfg(desktop)]
             let _ = app
@@ -344,6 +379,14 @@ pub fn run() {
                 tauri::async_runtime::block_on(recreate_window(app.handle(), "main", None));
             }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event
+                && window.label() == "main"
+                && let Some(taskbar_win) = window.app_handle().get_webview_window("taskbar-lyric")
+            {
+                let _ = taskbar_win.destroy();
+            }
         })
         .run(context)
         .expect("error while running tauri application");

@@ -61,6 +61,19 @@ objc2-avf-audio = "^0.3"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 webview2-com = "0.38"
+taskbar-lyric = { git = "https://github.com/apoint123/taskbar-lyric.git", features = [
+    "tracing",
+] }
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_Controls",
+    "Win32_UI_Shell",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 cpal = { version = "^0.16", features = ["oboe-shared-stdcxx"] }

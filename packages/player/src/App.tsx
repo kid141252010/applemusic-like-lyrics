@@ -12,9 +12,11 @@ import { ExtensionInjectPoint } from "./components/ExtensionInjectPoint/index.ts
 import { LocalMusicContext } from "./components/LocalMusicContext/index.tsx";
 import { NowPlayingBar } from "./components/NowPlayingBar/index.tsx";
 import { ShotcutContext } from "./components/ShotcutContext/index.tsx";
+import { TaskbarLyricBridge } from "./components/TaskbarLyricBridge/index.tsx";
 import { ThemeManager } from "./components/ThemeManager/index.tsx";
 import { UpdateContext } from "./components/UpdateContext/index.tsx";
 import { WSProtocolMusicContext } from "./components/WSProtocolMusicContext/index.tsx";
+import { enableTaskbarLyricAtom } from "./states/appAtoms.ts";
 import "./i18n";
 import { isLyricPageOpenedAtom } from "@applemusic-like-lyrics/react-full";
 import { StatsComponent } from "./components/StatsComponent/index.tsx";
@@ -35,6 +37,7 @@ const AMLLWrapper = lazy(() => import("./components/AMLLWrapper"));
 function App() {
 	const isLyricPageOpened = useAtomValue(isLyricPageOpenedAtom);
 	const showStatJSFrame = useAtomValue(showStatJSFrameAtom);
+	const enableTaskbarLyric = useAtomValue(enableTaskbarLyricAtom);
 	const musicContextMode = useAtomValue(musicContextModeAtom);
 	const displayLanguage = useAtomValue(displayLanguageAtom);
 	const isDarkTheme = useAtomValue(isDarkThemeAtom);
@@ -54,6 +57,7 @@ function App() {
 			{musicContextMode === MusicContextMode.Local && (
 				<LocalMusicContext key={MusicContextMode.Local} />
 			)}
+			{enableTaskbarLyric && <TaskbarLyricBridge />}
 			{musicContextMode === MusicContextMode.WSProtocol && (
 				<WSProtocolMusicContext
 					key={MusicContextMode.WSProtocol}
