@@ -22,6 +22,7 @@ export class BottomLineEl implements HasElement, Disposable {
 			"class",
 			`${styles.lyricLine} ${styles.bottomLine}`,
 		);
+		this.element.dataset.bottomLine = "true";
 		this.rebuildStyle();
 	}
 	async measureSize(): Promise<[number, number]> {

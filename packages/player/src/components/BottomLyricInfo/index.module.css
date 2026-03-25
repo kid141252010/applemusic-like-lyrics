@@ -8,3 +8,7 @@
 :global([data-focused="true"]) .bottomInfo {
 	opacity: 1;
 }
+
+:global([data-bottom-line]) {
+	pointer-events: none;
+}
