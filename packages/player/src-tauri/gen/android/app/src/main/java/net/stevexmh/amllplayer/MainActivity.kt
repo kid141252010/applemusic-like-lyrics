@@ -1,20 +1,25 @@
 package net.stevexmh.amllplayer
 
 import android.content.Intent
-import android.net.Uri
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import android.view.WindowManager
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
+import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : TauriActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
         setupImmersiveUi()
+        super.onCreate(savedInstanceState)
+
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
@@ -26,11 +31,15 @@ class MainActivity : TauriActivity() {
     }
 
     private fun setupImmersiveUi() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT)
+        )
 
-        val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.isAppearanceLightStatusBars = false
-        controller.isAppearanceLightNavigationBars = false
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
     }
 
     private fun checkAllFilesAccessPermission() {
@@ -41,11 +50,12 @@ class MainActivity : TauriActivity() {
                     .setMessage(R.string.all_files_access_required_text)
                     .setPositiveButton(R.string.all_files_access_required_go_to_setting) { _, _ ->
                         try {
-                            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                            val intent =
+                                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                             intent.addCategory("android.intent.category.DEFAULT")
-                            intent.data = Uri.parse("package:${applicationContext.packageName}")
+                            intent.data = "package:${applicationContext.packageName}".toUri()
                             startActivity(intent)
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                             startActivity(intent)
                         }
