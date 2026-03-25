@@ -929,25 +929,9 @@ export abstract class LyricPlayerBase
 				}
 			}
 
-			let blurLevel = 0;
-
-			if (this.enableBlur) {
-				if (isActive) {
-					blurLevel = 0;
-				} else {
-					blurLevel = 1;
-					if (i < this.scrollToIndex) {
-						blurLevel += Math.abs(this.scrollToIndex - i) + 1;
-					} else {
-						blurLevel += Math.abs(
-							i - Math.max(this.scrollToIndex, latestIndex),
-						);
-					}
-				}
-			}
+			const blurLevel = this.calculateBlur(i, isActive, latestIndex);
 
 			const SCALE_ASPECT = this.enableScale ? 97 : 100;
-
 			let targetScale = 100;
 
 			if (!isActive && this.isPlaying) {
@@ -958,10 +942,6 @@ export abstract class LyricPlayerBase
 				}
 			}
 
-			if (this.isUserScrolling) {
-				blurLevel = 0;
-			}
-
 			const renderMode = isActive
 				? LyricLineRenderMode.GRADIENT
 				: LyricLineRenderMode.SOLID;
@@ -970,7 +950,7 @@ export abstract class LyricPlayerBase
 				curPos,
 				targetScale,
 				targetOpacity,
-				window.innerWidth <= 1024 ? blurLevel * 0.8 : blurLevel,
+				blurLevel,
 				force,
 				delay,
 				renderMode,
@@ -988,8 +968,37 @@ export abstract class LyricPlayerBase
 			}
 		});
 		this.scrollBoundary[1] = curPos + this.scrollOffset - this.size[1] / 2;
-		// console.groupEnd();
-		this.bottomLine.setTransform(0, curPos, force, delay);
+
+		const bottomIndex = this.currentLyricLineObjects.length;
+		const finalBottomBlur = this.calculateBlur(
+			bottomIndex,
+			isBottomFocused,
+			latestIndex,
+		);
+
+		this.bottomLine.setTransform(0, curPos, finalBottomBlur, force, delay);
+	}
+
+	protected calculateBlur(
+		itemIndex: number,
+		isActive: boolean,
+		latestIndex: number,
+	): number {
+		if (!this.enableBlur || this.isUserScrolling || isActive) {
+			return 0;
+		}
+
+		let blurLevel = 1;
+
+		if (itemIndex < this.scrollToIndex) {
+			blurLevel += Math.abs(this.scrollToIndex - itemIndex) + 1;
+		} else {
+			blurLevel += Math.abs(
+				itemIndex - Math.max(this.scrollToIndex, latestIndex),
+			);
+		}
+
+		return window.innerWidth <= 1024 ? blurLevel * 0.8 : blurLevel;
 	}
 
 	/**

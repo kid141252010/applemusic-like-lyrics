@@ -1,5 +1,5 @@
 .bottomInfo {
-	opacity: 0.5;
+	opacity: 0.3;
 	transition:
 		font-size 0.3s ease,
 		opacity 0.3s ease;
