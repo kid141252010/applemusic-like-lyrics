@@ -546,10 +546,10 @@ impl Iterator for FFmpegDecoder {
         self.shared.condvar.notify_one();
         drop(shared_buffer_lock);
 
-        if !chunk.fft_samples.is_empty() {
-            if let Some(mut player) = self.fft_player.try_write() {
-                player.push_samples(&chunk.fft_samples);
-            }
+        if !chunk.fft_samples.is_empty()
+            && let Some(mut player) = self.fft_player.try_write()
+        {
+            player.push_samples(&chunk.fft_samples);
         }
 
         self.local_buffer.extend(chunk.player_samples);
@@ -597,10 +597,10 @@ impl Drop for FFmpegDecoder {
     fn drop(&mut self) {
         self.shared.is_stopping.store(true, Ordering::Release);
         self.shared.condvar.notify_all();
-        if let Some(handle) = self.decoder_thread.take() {
-            if let Err(e) = handle.join() {
-                error!("解码器线程 panic: {e:?}");
-            }
+        if let Some(handle) = self.decoder_thread.take()
+            && let Err(e) = handle.join()
+        {
+            error!("解码器线程 panic: {e:?}");
         }
     }
 }
