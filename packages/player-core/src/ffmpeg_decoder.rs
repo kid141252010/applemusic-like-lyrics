@@ -36,6 +36,7 @@ struct Shared {
 
 pub enum ControlMessage {
     Seek(Duration),
+    Close,
 }
 
 struct DecoderMetadata {
@@ -261,6 +262,9 @@ fn run_decoding_loop(
                     }
                     continue 'main_loop;
                 }
+                Ok(ControlMessage::Close) => {
+                    break 'main_loop;
+                }
                 Err(_) => {
                     break 'main_loop;
                 }
@@ -270,6 +274,9 @@ fn run_decoding_loop(
                 Ok(ControlMessage::Seek(pos)) => {
                     execute_seek(data, &shared, pos);
                     continue 'main_loop;
+                }
+                Ok(ControlMessage::Close) => {
+                    break 'main_loop;
                 }
                 Err(mpsc::TryRecvError::Empty) => {}
                 Err(mpsc::TryRecvError::Disconnected) => {
@@ -597,6 +604,8 @@ impl Drop for FFmpegDecoder {
     fn drop(&mut self) {
         self.shared.is_stopping.store(true, Ordering::Release);
         self.shared.condvar.notify_all();
+        let _ = self.control_tx.send(ControlMessage::Close);
+
         if let Some(handle) = self.decoder_thread.take()
             && let Err(e) = handle.join()
         {
