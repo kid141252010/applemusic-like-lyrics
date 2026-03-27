@@ -214,11 +214,13 @@ const LyricContext: FC = () => {
 		});
 	}, []);
 
+	const musicQuality = useAtomValue<MusicQualityState>(musicQualityAtom);
 	const { lyricLines, hasLyrics, metadata } = useLyricParser(
 		song?.lyric,
 		song?.lyricFormat,
 		song?.translatedLrc,
 		song?.romanLrc,
+		musicQuality.codec,
 	);
 
 	useEffect(() => {
@@ -604,6 +606,14 @@ function processAudioQuality(
 		return {
 			...definiteQuality,
 			type: AudioQualityType.None,
+		};
+	}
+
+	// eac3 = Dolby Atmos 杜比全景声（空间音频）
+	if (definiteQuality.codec.toLowerCase() === "eac3") {
+		return {
+			...definiteQuality,
+			type: AudioQualityType.DolbyAtmos,
 		};
 	}
 

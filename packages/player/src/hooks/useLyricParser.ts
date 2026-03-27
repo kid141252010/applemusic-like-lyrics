@@ -72,11 +72,27 @@ interface LyricParserResult {
 	metadata: [string, string[]][];
 }
 
+/**
+ * 从 TTML 原始文本中提取 iTunesMetadata 空间音频偏差值（毫秒）
+ * 对应标签：<audio lyricOffset="<ms>" role="spatial"/>
+ */
+function parseSpatialAudioBias(ttmlRaw: string): number | undefined {
+	const match = ttmlRaw.match(
+		/<audio[^>]+role\s*=\s*["']spatial["'][^>]*lyricOffset\s*=\s*["']([^"']+)["'][^>]*\/?>|<audio[^>]+lyricOffset\s*=\s*["']([^"']+)["'][^>]+role\s*=\s*["']spatial["'][^>]*\/?>/,
+	);
+	if (!match) return undefined;
+	const raw = match[1] ?? match[2];
+	const val = Number(raw);
+	return Number.isNaN(val) ? undefined : val;
+}
+
 export const useLyricParser = (
 	lyricStr?: string,
 	format?: string,
 	translatedLrc?: string,
 	romanLrc?: string,
+	/** 当前音频编解码器，用于判断是否为杜比全景声 (eac3) */
+	audioCodec?: string,
 ): LyricParserResult => {
 	return useMemo(() => {
 		if (!lyricStr || !format) {
@@ -121,6 +137,29 @@ export const useLyricParser = (
 					const ttmlResult = parseTTML(lyricStr);
 					parsedLyricLines = ttmlResult.lines;
 					parsedMetadata = ttmlResult.metadata;
+
+					// 仅在杜比全景声 (eac3) 时应用空间音频歌词偏差
+					const isSpatialAudio = audioCodec?.toLowerCase() === "eac3";
+					if (isSpatialAudio) {
+						const spatialBias = parseSpatialAudioBias(lyricStr);
+						if (spatialBias !== undefined && spatialBias !== 0) {
+							console.log(
+								LYRIC_LOG_TAG,
+								`检测到杜比全景声 (eac3)，应用空间音频歌词偏差: ${spatialBias}ms`,
+							);
+							parsedLyricLines = parsedLyricLines.map((line) => ({
+								...line,
+								startTime: Math.max(0, line.startTime + spatialBias),
+								endTime: Math.max(0, line.endTime + spatialBias),
+								words: line.words.map((word) => ({
+									...word,
+									startTime: Math.max(0, word.startTime + spatialBias),
+									endTime: Math.max(0, word.endTime + spatialBias),
+								})),
+							}));
+						}
+					}
+
 					console.log(
 						LYRIC_LOG_TAG,
 						"解析出 TTML 歌词",
@@ -197,5 +236,5 @@ export const useLyricParser = (
 			console.warn("解析歌词时出现错误", e);
 			return { lyricLines: [], hasLyrics: false, metadata: [] };
 		}
-	}, [lyricStr, format, translatedLrc, romanLrc]);
+	}, [lyricStr, format, translatedLrc, romanLrc, audioCodec]);
 };
