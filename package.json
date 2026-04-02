@@ -9,7 +9,7 @@
 		"typescript": "catalog:"
 	},
 	"scripts": {
-		"build:libs": "nx run-many --target=build --projects=tag:library",
+		"build:libs": "nx run-many --target=build --projects=@applemusic-like-lyrics/lyric,@applemusic-like-lyrics/core,@applemusic-like-lyrics/vue,@applemusic-like-lyrics/react,@applemusic-like-lyrics/ttml,@applemusic-like-lyrics/fft,@applemusic-like-lyrics/ws-protocol,@applemusic-like-lyrics/react-full",
 		"format": "biome format . --write"
 	},
 	"packageManager": "pnpm@10.33.0",
