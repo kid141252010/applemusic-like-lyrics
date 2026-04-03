@@ -29,9 +29,15 @@ const ignoredMatchers = [
 	(file) => file === "tsconfig.json",
 	(file) => file.startsWith("packages/docs/"),
 	(file) => /^packages\/[^/]+\/docs\//.test(file),
+
+	// legacy: AMLL Player
+	(file) => file.startsWith("packages/player"),
+	(file) => file.startsWith("packages/skia-player"),
+	(file) => file === "crowdin.yml",
 ];
 
-const isIgnoredFile = (file) => ignoredMatchers.some((matcher) => matcher(file));
+const isIgnoredFile = (file) =>
+	ignoredMatchers.some((matcher) => matcher(file));
 
 const apiBaseUrl = `https://api.github.com/repos/${repository}`;
 
@@ -45,7 +51,9 @@ async function requestJson(path) {
 	});
 
 	if (!response.ok) {
-		throw new Error(`GitHub API request failed: ${response.status} ${response.statusText}`);
+		throw new Error(
+			`GitHub API request failed: ${response.status} ${response.statusText}`,
+		);
 	}
 
 	return response.json();
@@ -85,7 +93,12 @@ if (allIgnored && !hasNoReleaseLabel) {
 
 if (!allIgnored && hasNoReleaseLabel) {
 	throw new Error(
-		"The no-release label is only allowed when every changed file is ignored by release plan checks.",
+		"The no-release label is only allowed when every changed file is ignored by release plan checks.\n" +
+			`Found ${nonIgnoredFiles.length} non-ignored changed file(s): (showing first 30)\n` +
+			nonIgnoredFiles
+				.slice(0, 30)
+				.map((file) => `  - ${file}`)
+				.join("\n"),
 	);
 }
 
@@ -94,4 +107,6 @@ appendFileSync(
 	`requires_release_plan=${allIgnored ? "false" : "true"}\n`,
 );
 
-console.log(JSON.stringify({ changedFiles, nonIgnoredFiles, hasNoReleaseLabel }, null, 2));
+console.log(
+	JSON.stringify({ changedFiles, nonIgnoredFiles, hasNoReleaseLabel }, null, 2),
+);
