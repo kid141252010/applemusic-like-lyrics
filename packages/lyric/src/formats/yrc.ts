@@ -14,12 +14,29 @@ import {
 	normalizeTimestamp,
 } from "../utils";
 
+const beginParenPattern = /^[（(]/;
+const endParenPattern = /[）)]$/;
+function checkIsBG(words: LyricWord[]): boolean {
+	return (
+		words.length > 0 &&
+		beginParenPattern.test(words[0].word) &&
+		endParenPattern.test(words[words.length - 1].word)
+	);
+}
+function trimBGParentheses(words: LyricWord[]): void {
+	words[0].word = words[0].word.slice(1);
+	words[words.length - 1].word = words[words.length - 1].word.slice(0, -1);
+}
+
 /**
  * 解析 YRC 格式的歌词字符串
  * @param src 歌词字符串
  * @returns 成功解析出来的歌词
  */
 export function parseYRC(yrc: string): LyricLine[] {
+	const wordPattern = /^(.*?)\((\d+),(\d+),0\)/;
+	const linePattern = /^\[(\d+),(\d+)\]/;
+
 	const lines = yrc
 		.split(/\r?\n/)
 		.map((l) => l.trim())
@@ -27,43 +44,50 @@ export function parseYRC(yrc: string): LyricLine[] {
 
 	return lines
 		.map((lineStr) => {
-			const lineMatch = lineStr.match(/^\[(\d+),(\d+)\]/);
+			const lineMatch = lineStr.match(linePattern);
 			if (!lineMatch) return null;
 			const [linePrefix, lineStartStr, lineDurStr] = lineMatch;
-
-			const wordPattern = /\((\d+),(\d+),0\)([^(]*)/g;
-			const wordMatches = lineStr
-				.slice(linePrefix.length)
-				.matchAll(wordPattern);
-			const words = [...wordMatches].flatMap((match) => {
-				const [, wordStartStr, wordDurStr, wordText] = match;
-				if (
-					wordStartStr === undefined ||
-					wordDurStr === undefined ||
-					wordText === undefined
-				)
-					return [];
-
-				const startTime = Number(wordStartStr);
-				const endTime = startTime + Number(wordDurStr);
-				const trimmedText = wordText.trim();
-
-				const createdWords: LyricWord[] = [
-					createWord({ word: trimmedText, startTime, endTime }),
-				];
-				if (wordText.startsWith(" "))
-					createdWords.unshift(createWord({ word: " " }));
-				if (wordText.endsWith(" "))
-					createdWords.push(createWord({ word: " " }));
-				return createdWords;
-			});
-
 			const lineStart = Number(lineStartStr);
 			const lineDuration = Number(lineDurStr);
+
+			const words: LyricWord[] = [];
+			let lineContent = lineStr.slice(linePrefix.length);
+			let lastStart = -1;
+			let lastEnd = -1;
+			while (true) {
+				const wordMatch = lineContent.match(wordPattern);
+				if (!wordMatch) break;
+				const [fullMatch, lastText, wordStartStr, wordDurStr] = wordMatch;
+				if (lastText && lastStart !== -1)
+					words.push(
+						createWord({
+							word: lastText,
+							startTime: lastStart,
+							endTime: lastEnd,
+						}),
+					);
+				const wordStart = Number(wordStartStr);
+				const wordDur = Number(wordDurStr);
+				const wordEnd = wordStart + wordDur;
+				[lastStart, lastEnd] = [wordStart, wordEnd];
+				lineContent = lineContent.slice(fullMatch.length);
+			}
+			if (lastStart !== -1 && lineContent)
+				words.push(
+					createWord({
+						word: lineContent,
+						startTime: lastStart,
+						endTime: lastEnd,
+					}),
+				);
+
+			const isBG = checkIsBG(words);
+			if (isBG) trimBGParentheses(words);
 			return createLine({
 				startTime: lineStart,
 				endTime: lineStart + lineDuration,
 				words,
+				isBG,
 			});
 		})
 		.filter((line): line is LyricLine => line !== null);
@@ -86,10 +110,18 @@ export function stringifyYRC(lines: LyricLine[]): string {
 			const lineDuration = normalizeDuration(lineEnd - lineStart);
 
 			const lineWords: string[] = [];
-			for (const { word, startTime, endTime } of line.words) {
+			for (const [
+				index,
+				{ word, startTime, endTime },
+			] of line.words.entries()) {
 				if (!word.trim() && lineWords.length) {
 					lineWords[lineWords.length - 1] += word;
 					continue;
+				}
+				let printedWord = makeParenthesesFull(word);
+				if (line.isBG) {
+					if (index === 0) printedWord = `（${printedWord}`;
+					if (index === line.words.length - 1) printedWord += "）";
 				}
 				const normalizedWordStart = normalizeTimestamp(startTime);
 				const normalizedWordEnd = normalizeTimestamp(endTime);
@@ -97,12 +129,9 @@ export function stringifyYRC(lines: LyricLine[]): string {
 					normalizedWordEnd - normalizedWordStart,
 				);
 				lineWords.push(
-					`(${normalizedWordStart},${wordDuration},0)${makeParenthesesFull(word)}`,
+					`(${normalizedWordStart},${wordDuration},0)${printedWord}`,
 				);
 			}
-
-			if (line.isBG)
-				return `[${lineStart},${lineDuration}]（${lineWords.join("")}）`;
 			return `[${lineStart},${lineDuration}]${lineWords.join("")}`;
 		})
 		.join("\n");

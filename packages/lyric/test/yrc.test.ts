@@ -30,13 +30,6 @@ describe("yrc", () => {
 		expect(lines[0].words[0].word).toBe("Hello");
 	});
 
-	it("parses spaces between words as single space words", () => {
-		const lines = parseYRC("[1000,1000](1000,500,0)Hello (1500,500,0)World");
-
-		expect(lines).toHaveLength(1);
-		expect(lines[0].words.map((w) => w.word)).toEqual(["Hello", " ", "World"]);
-	});
-
 	it("stringifies words and preserves spaces", () => {
 		const result = stringifyYRC([
 			{
@@ -62,7 +55,9 @@ describe("yrc", () => {
 			{
 				startTime: 1000,
 				endTime: 2000,
-				words: [{ startTime: 1000, endTime: 2000, word: "Hello", romanWord: "" }],
+				words: [
+					{ startTime: 1000, endTime: 2000, word: "Hello", romanWord: "" },
+				],
 				translatedLyric: "",
 				romanLyric: "",
 				isBG: true,
@@ -70,7 +65,30 @@ describe("yrc", () => {
 			},
 		]);
 
-		expect(result).toBe("[1000,1000]（(1000,1000,0)Hello）");
+		expect(result).toBe("[1000,1000](1000,1000,0)（Hello）");
+	});
+
+	it("parses and keeps bg wrapper lines stable", () => {
+		const input = "[1000,1000](1000,1000,0)（Hello, (2000,2000,0)world）";
+		const lines = parseYRC(input);
+
+		expect(lines).toHaveLength(1);
+		expect(lines[0].isBG).toBe(true);
+		expect(lines[0].words).toHaveLength(2);
+		expect(lines[0].words[0].word).toBe("Hello, ");
+		expect(lines[0].words[1].word).toBe("world");
+		expect(stringifyYRC(lines)).toBe(input);
+	});
+
+	it("keeps parenthesized fragments in plain word text", () => {
+		const lines = parseYRC("[0,20](0,10,0)A(x)(10,10,0) B");
+
+		expect(lines).toHaveLength(1);
+		expect(lines[0].words.map((w) => w.word)).toEqual(["A(x)", " B"]);
+		expect(lines[0].words[0].startTime).toBe(0);
+		expect(lines[0].words[0].endTime).toBe(10);
+		expect(lines[0].words[1].startTime).toBe(10);
+		expect(lines[0].words[1].endTime).toBe(20);
 	});
 
 	it("normalizes invalid timestamps when stringifying", () => {
