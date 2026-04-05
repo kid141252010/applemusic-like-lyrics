@@ -6,6 +6,7 @@ export { decryptQrcHex, encryptQrcHex } from "./formats/eqrc";
 export { parseLYL, stringifyLYL } from "./formats/lyl";
 export { parseLYS, stringifyLYS } from "./formats/lys";
 export { parseLQE, stringifyLQE } from "./formats/lqe";
+export { parseESLRC, stringifyESLRC } from "./formats/eslrc";
 export { parseTTML, stringifyTTML } from "./formats/ttml";
 
 export type { LyricLine, LyricWord, TTMLLyric } from "./types";
