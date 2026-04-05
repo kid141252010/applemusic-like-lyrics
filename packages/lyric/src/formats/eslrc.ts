@@ -6,28 +6,24 @@
  * [00:10.82]Test[00:10.97] Word[00:12.62]
  * [00:12.62]Next[00:13.20] line[00:14.10]
  */
-import type { LyricLine } from "../types";
-import { createLine, createWord, formatTime } from "../utils";
+import type { LyricLine, LyricWord } from "../types";
+import {
+	clampTimestamp,
+	createLine,
+	createWord,
+	formatTime,
+	parseTime,
+} from "../utils";
 
-const MAX_TIME = 60039999; // 999:99.999
-const TIME_REGEX = /^\[(\d+):(\d+)[\.:](\d{1,3})\]/;
+const TIME_REGEX = /^\[((?:\d+:)*\d+(?:\.\d+)?)\]/;
 
-function clampTime(value: number): number {
-	return Math.min(MAX_TIME, Math.max(0, value));
-}
-
-function parseTimestampPrefix(src: string): { time: number; length: number } | null {
+function parseTimestampPrefix(
+	src: string,
+): { time: number; length: number } | null {
 	const match = src.match(TIME_REGEX);
 	if (!match) return null;
-	const [raw, minStr, secStr, msStr] = match;
-	const min = Number(minStr);
-	const sec = Number(secStr);
-	let ms = Number(msStr);
-	if (msStr.length === 1) ms *= 100;
-	if (msStr.length === 2) ms *= 10;
-	if (!Number.isFinite(min) || !Number.isFinite(sec) || !Number.isFinite(ms))
-		return null;
-	return { time: min * 60 * 1000 + sec * 1000 + ms, length: raw.length };
+	const [raw, timeStr] = match;
+	return { time: parseTime(timeStr), length: raw.length };
 }
 
 function parseESLRCLine(rawLine: string): LyricLine | null {
@@ -37,7 +33,7 @@ function parseESLRCLine(rawLine: string): LyricLine | null {
 	src = src.slice(first.length);
 	let startTime = first.time;
 
-	const words = [];
+	const words: LyricWord[] = [];
 	while (src.trim().length > 0) {
 		const nextTimePos = src.indexOf("[");
 		if (nextTimePos <= 0) return null;
@@ -73,16 +69,20 @@ export function parseESLRC(eslrc: string): LyricLine[] {
 	}
 
 	result.sort(
-		(a, b) => (a.words[0]?.startTime ?? Number.MAX_SAFE_INTEGER) - (b.words[0]?.startTime ?? Number.MAX_SAFE_INTEGER),
+		(a, b) =>
+			(a.words[0]?.startTime ?? Number.MAX_SAFE_INTEGER) -
+			(b.words[0]?.startTime ?? Number.MAX_SAFE_INTEGER),
 	);
 
 	for (const line of result) {
 		for (const word of line.words) {
-			word.startTime = clampTime(word.startTime);
-			word.endTime = clampTime(word.endTime);
+			word.startTime = clampTimestamp(word.startTime);
+			word.endTime = clampTimestamp(word.endTime);
 		}
-		line.startTime = clampTime(line.words[0]?.startTime ?? 0);
-		line.endTime = clampTime(line.words[line.words.length - 1]?.endTime ?? 0);
+		line.startTime = clampTimestamp(line.words[0]?.startTime ?? 0);
+		line.endTime = clampTimestamp(
+			line.words[line.words.length - 1]?.endTime ?? 0,
+		);
 	}
 
 	return result;
@@ -97,7 +97,11 @@ export function stringifyESLRC(lines: LyricLine[]): string {
 	return lines
 		.map((line) => {
 			if (!line.words.length) return "";
-			return `[${formatTime(line.words[0].startTime)}]${line.words.map((word) => `${word.word}[${formatTime(word.endTime)}]`).join("")}`;
+			return `[${formatTime(clampTimestamp(line.words[0].startTime))}]${line.words
+				.map(
+					(word) => `${word.word}[${formatTime(clampTimestamp(word.endTime))}]`,
+				)
+				.join("")}`;
 		})
 		.filter(Boolean)
 		.join("\n");

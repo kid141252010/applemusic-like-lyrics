@@ -12,6 +12,7 @@ import {
 	createLine,
 	createWord,
 	formatTime,
+	normalizeTimestamp,
 	pairwise,
 	parseTime,
 } from "../utils";
@@ -74,7 +75,7 @@ export function stringifyLRC(lines: LyricLine[]): string {
 		.map((line) => {
 			const text = line.words.map((w) => w.word).join("");
 			const printText = line.isBG ? `(${text})` : text;
-			return `[${formatTime(line.startTime)}]${printText}`;
+			return `[${formatTime(normalizeTimestamp(line.startTime))}]${printText}`;
 		})
 		.join("\n");
 }

@@ -7,7 +7,12 @@
  * [193459,4198](193459,412,0)What's (193871,574,0)past (194445,506,0)is (194951,2706,0)past
  */
 import type { LyricLine, LyricWord } from "../types";
-import { createLine, createWord } from "../utils";
+import {
+	createLine,
+	createWord,
+	normalizeDuration,
+	normalizeTimestamp,
+} from "../utils";
 
 /**
  * 解析 YRC 格式的歌词字符串
@@ -76,8 +81,9 @@ function makeParenthesesFull(text: string): string {
 export function stringifyYRC(lines: LyricLine[]): string {
 	return lines
 		.map((line) => {
-			const lineStart = line.startTime;
-			const lineDuration = line.endTime - line.startTime;
+			const lineStart = normalizeTimestamp(line.startTime);
+			const lineEnd = normalizeTimestamp(line.endTime);
+			const lineDuration = normalizeDuration(lineEnd - lineStart);
 
 			const lineWords: string[] = [];
 			for (const { word, startTime, endTime } of line.words) {
@@ -85,9 +91,13 @@ export function stringifyYRC(lines: LyricLine[]): string {
 					lineWords[lineWords.length - 1] += word;
 					continue;
 				}
-				const wordDuration = endTime - startTime;
+				const normalizedWordStart = normalizeTimestamp(startTime);
+				const normalizedWordEnd = normalizeTimestamp(endTime);
+				const wordDuration = normalizeDuration(
+					normalizedWordEnd - normalizedWordStart,
+				);
 				lineWords.push(
-					`(${startTime},${wordDuration},0)${makeParenthesesFull(word)}`,
+					`(${normalizedWordStart},${wordDuration},0)${makeParenthesesFull(word)}`,
 				);
 			}
 

@@ -8,10 +8,12 @@
  * Dialogue: 0,0:00:12.34, 0:00:15.67, Default, v1-roman,0,0,0,,ni hao shi jie
  */
 import type { LyricLine } from "../types";
+import { normalizeTimestamp } from "../utils";
 
 function writeASSTimestamp(ms: number): string {
-	const milli = Math.max(0, Math.round(ms)) % 1000;
-	const secTotal = Math.floor(Math.max(0, Math.round(ms)) / 1000);
+	const normalized = normalizeTimestamp(ms);
+	const milli = Math.round(normalized) % 1000;
+	const secTotal = Math.floor(Math.round(normalized) / 1000);
 	const sec = secTotal % 60;
 	const minTotal = Math.floor(secTotal / 60);
 	const hour = Math.floor(minTotal / 60);
@@ -49,7 +51,13 @@ export function stringifyASS(lines: LyricLine[]): string {
 	];
 
 	for (const line of lines) {
-		const timedWords = line.words.filter((w) => w.endTime > w.startTime);
+		const timedWords = line.words
+			.map((w) => ({
+				...w,
+				startTime: normalizeTimestamp(w.startTime),
+				endTime: normalizeTimestamp(w.endTime),
+			}))
+			.filter((w) => w.endTime > w.startTime);
 		const startTime = Math.min(...timedWords.map((w) => w.startTime));
 		const endTime = Math.max(...timedWords.map((w) => w.endTime));
 		if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) continue;
@@ -57,22 +65,24 @@ export function stringifyASS(lines: LyricLine[]): string {
 		let lyricText = "";
 		let previousWordEndTime = startTime;
 		for (const word of line.words) {
-			if (word.startTime >= word.endTime) {
+			const wordStart = normalizeTimestamp(word.startTime);
+			const wordEnd = normalizeTimestamp(word.endTime);
+			if (wordStart >= wordEnd) {
 				lyricText += word.word;
 				continue;
 			}
 
-			if (word.startTime > previousWordEndTime) {
+			if (wordStart > previousWordEndTime) {
 				const gapDurationCS = Math.floor(
-					(word.startTime - previousWordEndTime + 5) / 10,
+					(wordStart - previousWordEndTime + 5) / 10,
 				);
 				if (gapDurationCS > 0) lyricText += `{\\k${gapDurationCS}}`;
 			}
 
-			const wordDurationCS = Math.floor((word.endTime - word.startTime + 5) / 10);
+			const wordDurationCS = Math.floor((wordEnd - wordStart + 5) / 10);
 			if (wordDurationCS > 0) lyricText += `{\\k${wordDurationCS}}`;
 			lyricText += word.word;
-			previousWordEndTime = word.endTime;
+			previousWordEndTime = wordEnd;
 		}
 
 		const speaker = getSpeakerName(line);

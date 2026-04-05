@@ -12,5 +12,9 @@ export default defineConfig({
 			external: ["@applemusic-like-lyrics/core"],
 		},
 	},
+	test: {
+		environment: "node",
+		include: ["test/**/*.test.ts"],
+	},
 	plugins: [dts()],
 });

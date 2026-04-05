@@ -7,7 +7,13 @@
  * [02:40.080]<02:40.080>Come <02:40.290>back <02:40.470>like <02:40.680>elastic<02:41.370>
  */
 import type { LyricLine, LyricWord } from "../types";
-import { createLine, createWord, formatTime, parseTime } from "../utils";
+import {
+	createLine,
+	createWord,
+	formatTime,
+	normalizeTimestamp,
+	parseTime,
+} from "../utils";
 
 /**
  * 解析 LRC A2 格式的歌词字符串
@@ -21,7 +27,8 @@ export function parseLRCa2(lrc: string): LyricLine[] {
 		.filter((l) => l.length > 0);
 	const lyricLines: LyricLine[] = [];
 	const lineTimeStampRegex = /^\[((?:\d+:)*\d+(?:\.\d+)?)\]/;
-	const wordTimestampRegex = /<((?:\d+:)*\d+(?:\.\d+)?)>/g;
+	const wordTimestampRegex = /<((?:\d+:)*\d+(?:\.\d+)?)>/;
+	const wordTimestampPrefixRegex = /^<((?:\d+:)*\d+(?:\.\d+)?)>/;
 	for (let lineStr of lines) {
 		if (lineStr.startsWith("#") || lineStr.startsWith("{")) continue;
 		const tagMatch = lineStr.match(/^\[([a-z]):(.+)\]$/i);
@@ -34,19 +41,23 @@ export function parseLRCa2(lrc: string): LyricLine[] {
 		lineStr = lineStr.slice(lineTimeStamp.length).trim();
 
 		const lineItems: (number | string)[] = [];
-		const textRegex = /^[^<]*/;
 		while (lineStr.length) {
-			const timeStampMatch = lineStr.match(wordTimestampRegex);
-			if (!timeStampMatch) {
-				const textMatch = lineStr.match(textRegex)?.[0] ?? "";
-				lineItems.push(textMatch);
-				lineStr = lineStr.slice(textMatch.length);
-			} else {
-				const [wordTimeStamp, wordTimeStr] = timeStampMatch;
+			const prefixedTimeStampMatch = lineStr.match(wordTimestampPrefixRegex);
+			if (prefixedTimeStampMatch) {
+				const [wordTimeStamp, wordTimeStr] = prefixedTimeStampMatch;
 				const parsedWordTime = parseTime(wordTimeStr);
 				if (!Number.isNaN(parsedWordTime)) lineItems.push(parsedWordTime);
 				lineStr = lineStr.slice(wordTimeStamp.length);
+				continue;
 			}
+
+			const nextWordTimeStampIndex = lineStr.search(wordTimestampRegex);
+			const text =
+				nextWordTimeStampIndex === -1
+					? lineStr
+					: lineStr.slice(0, nextWordTimeStampIndex);
+			lineItems.push(text);
+			lineStr = lineStr.slice(text.length);
 		}
 
 		const words: LyricWord[] = [];
@@ -81,7 +92,9 @@ export function parseLRCa2(lrc: string): LyricLine[] {
 export function stringifyLRCa2(lines: LyricLine[]): string {
 	return lines
 		.map((line) => {
-			if (line.words.length === 0) return `[${formatTime(line.startTime)}]`;
+			const normalizedLineStartTime = normalizeTimestamp(line.startTime);
+			if (line.words.length === 0)
+				return `[${formatTime(normalizedLineStartTime)}]`;
 			const normalizedWords: {
 				word: string;
 				startTime: number;
@@ -94,8 +107,8 @@ export function stringifyLRCa2(lines: LyricLine[]): string {
 				}
 				normalizedWords.push({
 					word: w.word,
-					startTime: w.startTime,
-					endTime: w.endTime,
+					startTime: normalizeTimestamp(w.startTime),
+					endTime: normalizeTimestamp(w.endTime),
 				});
 			});
 			const lineItems: (number | string)[] = normalizedWords.flatMap((w) => [
@@ -104,7 +117,7 @@ export function stringifyLRCa2(lines: LyricLine[]): string {
 			]);
 			lineItems.push(normalizedWords[normalizedWords.length - 1].endTime);
 			return (
-				`[${formatTime(line.startTime)}]` +
+				`[${formatTime(normalizedLineStartTime)}]` +
 				lineItems
 					.map((item) =>
 						typeof item === "number" ? `<${formatTime(item)}>` : item,

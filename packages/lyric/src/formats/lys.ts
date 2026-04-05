@@ -18,7 +18,12 @@
  * [0]Dreaming (5245,696)about (5941,471)the (6412,306)things (6718,458)that (7176,292)we (7468,511)could (7979,393)be(8372,737)
  */
 import type { LyricLine, LyricWord } from "../types";
-import { createLine, createWord } from "../utils";
+import {
+	createLine,
+	createWord,
+	normalizeDuration,
+	normalizeTimestamp,
+} from "../utils";
 
 /**
  * 解析 LYS 格式中的属性值
@@ -53,7 +58,8 @@ export function parseLYS(lys: string): LyricLine[] {
 		const propMatch = lineStr.match(propRegex);
 		if (!propMatch) continue;
 
-		const [, propStr, content] = propMatch;
+		const [, propStr] = propMatch;
+		const content = lineStr.slice(propMatch[0].length);
 		const words: LyricWord[] = [];
 		const props = parseProp(Number(propStr));
 
@@ -73,6 +79,7 @@ export function parseLYS(lys: string): LyricLine[] {
 
 		const lineStartTime = words[0]?.startTime ?? 0;
 		const lineEndTime = words[words.length - 1]?.endTime ?? 0;
+		if (!words.length) continue;
 
 		if (props.isBG && words.length) {
 			words[0].word = words[0].word.replace(/^\(/, "");
@@ -126,8 +133,10 @@ export function stringifyLYS(lines: LyricLine[]): string {
 				if (w.word.trim() || !printWords.length)
 					printWords.push({
 						word: w.word,
-						startTime: w.startTime,
-						duration: w.endTime - w.startTime,
+						startTime: normalizeTimestamp(w.startTime),
+						duration: normalizeDuration(
+							normalizeTimestamp(w.endTime) - normalizeTimestamp(w.startTime),
+						),
 					});
 				else printWords[printWords.length - 1].word += w.word;
 			});

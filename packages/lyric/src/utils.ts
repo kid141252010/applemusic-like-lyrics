@@ -41,6 +41,21 @@ export const formatTime = (ms: number): string => {
 	return `${min}:${sec}.${msPart}`;
 };
 
+export const normalizeTimestamp = (ms: number): number => {
+	if (!Number.isFinite(ms) || ms < 0) return 0;
+	return ms;
+};
+
+export const normalizeDuration = (duration: number): number => {
+	if (!Number.isFinite(duration) || duration < 0) return 0;
+	return duration;
+};
+
+export const MAX_LRC_TIMESTAMP = 60_039_999; // 999:99.999
+
+export const clampTimestamp = (ms: number, max = MAX_LRC_TIMESTAMP): number =>
+	Math.min(max, normalizeTimestamp(ms));
+
 /**
  * Returns consecutive pairs from the given iterable.
  *

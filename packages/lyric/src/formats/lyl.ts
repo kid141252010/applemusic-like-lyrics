@@ -8,7 +8,7 @@
  * [57380,62840]I think I'm moving but I go nowhere
  */
 import type { LyricLine } from "../types";
-import { createLine, createWord } from "../utils";
+import { createLine, createWord, normalizeTimestamp } from "../utils";
 
 /**
  * 解析 LYL 格式的歌词字符串
@@ -62,7 +62,7 @@ export function stringifyLYL(lines: LyricLine[]): string {
 	const body = lines.map((line) => {
 		const text = line.words.map((w) => w.word).join("");
 		const printText = line.isBG ? `(${text})` : text;
-		return `[${line.startTime},${line.endTime}]${printText}`;
+		return `[${normalizeTimestamp(line.startTime)},${normalizeTimestamp(line.endTime)}]${printText}`;
 	});
 	return [header, ...body].join("\n");
 }
