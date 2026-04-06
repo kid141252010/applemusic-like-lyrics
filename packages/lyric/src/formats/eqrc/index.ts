@@ -11,7 +11,7 @@
 
 import { deflate, inflate } from "pako";
 import { KEY_1, KEY_2, KEY_3 } from "./constants";
-import { desCrypt, keySchedule, Mode } from "./custom-des";
+import { desCrypt, type KeySchedule, keySchedule, Mode } from "./custom-des";
 import { hexToUint8Array, uint8ArrayToHex } from "./utils";
 
 const DES_BLOCK_SIZE = 8;
@@ -20,8 +20,8 @@ const DES_BLOCK_SIZE = 8;
  * 非标准 3DES 编解码器
  */
 class QqMusicCodec {
-	private readonly encryptSchedule: number[][][];
-	private readonly decryptSchedule: number[][][];
+	private readonly encryptSchedule: KeySchedule[];
+	private readonly decryptSchedule: KeySchedule[];
 
 	constructor() {
 		// 解密流程 D(K3) -> E(K2) -> D(K1)
