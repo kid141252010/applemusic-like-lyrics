@@ -14,20 +14,6 @@ import {
 	normalizeTimestamp,
 } from "../utils";
 
-const beginParenPattern = /^[（(]/;
-const endParenPattern = /[）)]$/;
-function checkIsBG(words: LyricWord[]): boolean {
-	return (
-		words.length > 0 &&
-		beginParenPattern.test(words[0].word) &&
-		endParenPattern.test(words[words.length - 1].word)
-	);
-}
-function trimBGParentheses(words: LyricWord[]): void {
-	words[0].word = words[0].word.slice(1);
-	words[words.length - 1].word = words[words.length - 1].word.slice(0, -1);
-}
-
 /**
  * 解析 QRC 格式的歌词字符串
  * @param src 歌词字符串
@@ -86,8 +72,19 @@ export function parseQRC(qrc: string): LyricLine[] {
 				);
 			}
 
-			const isBG = checkIsBG(words);
-			if (isBG) trimBGParentheses(words);
+			const isBG =
+				words.length > 0 &&
+				/^[(（]/.test(words[0].word) &&
+				/[）)]$/.test(words[words.length - 1].word);
+
+			if (isBG) {
+				words[0].word = words[0].word.replace(/^[(（]/, "");
+				words[words.length - 1].word = words[words.length - 1].word.replace(
+					/[）)]$/,
+					"",
+				);
+			}
+
 			return createLine({
 				startTime: lineStart,
 				endTime: lineStart + lineDuration,
