@@ -36,38 +36,20 @@ export function parseQRC(qrc: string): LyricLine[] {
 
 			const lineStart = Number(lineStartStr);
 			const lineDuration = Number(lineDurStr);
-			const lineEnd = lineStart + lineDuration;
 
 			const words: LyricWord[] = [];
 			const lineContent = lineStr.slice(linePrefix.length);
-			let lastEnd = lineStart;
-			let lastMatchEndIndex = 0;
 
 			for (const wordMatch of lineContent.matchAll(wordPattern)) {
-				const [fullMatch, wordText, wordStartStr, wordDurStr] = wordMatch;
+				const [, wordText, wordStartStr, wordDurStr] = wordMatch;
 				const wordStart = Number(wordStartStr);
 				const wordDur = Number(wordDurStr);
-				const wordEnd = wordStart + wordDur;
 
 				words.push(
 					createWord({
 						word: wordText,
 						startTime: wordStart,
-						endTime: wordEnd,
-					}),
-				);
-
-				lastEnd = wordEnd;
-				lastMatchEndIndex = wordMatch.index + fullMatch.length;
-			}
-
-			const remainingContent = lineContent.slice(lastMatchEndIndex);
-			if (remainingContent.trim()) {
-				words.push(
-					createWord({
-						word: remainingContent,
-						startTime: lastEnd,
-						endTime: lastEnd < lineEnd ? lineEnd : lastEnd,
+						endTime: wordStart + wordDur,
 					}),
 				);
 			}
@@ -92,7 +74,7 @@ export function parseQRC(qrc: string): LyricLine[] {
 				isBG,
 			});
 		})
-		.filter((line): line is LyricLine => line !== null);
+		.filter((line) => line !== null);
 }
 
 /**
