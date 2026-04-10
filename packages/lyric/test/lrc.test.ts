@@ -111,13 +111,15 @@ describe("lrc", () => {
 		expect(lines[2].words[0].word).toBe("World");
 	});
 
-	it("trims whitespace from lines and ignore empty lines", () => {
+	it("trims whitespace from lines and ignore empty lines, while preserving end times", () => {
 		const lines = parseLRC(
-			"[00:00.000]\n[00:01.000]   \n[00:01.120] Hello   \n\n[00:03.000] World \n[00:05.000]   \n",
+			"[00:00.000]\n[00:01.000]   \n[00:01.120] Hello   \n[00:02.333]\n[00:03.000] World \n[00:05.000]   \n",
 		);
 		expect(lines).toHaveLength(2);
 		expect(lines[0].words[0].word).toBe("Hello");
+		expect(lines[0].endTime).toBe(2333);
 		expect(lines[1].words[0].word).toBe("World");
+		expect(lines[1].endTime).toBe(5000);
 	});
 
 	it("stringifies background lines with parentheses and normal lines without", () => {

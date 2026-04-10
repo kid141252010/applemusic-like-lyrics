@@ -45,7 +45,6 @@ export function parseLRC(lrc: string): LyricLine[] {
 		}
 		if (timeStamps.length === 0) continue;
 		lineStr = lineStr.trim();
-		if (!lineStr) continue;
 		const backgroundMatch = lineStr.match(bgRegex);
 		const isBG = Boolean(backgroundMatch);
 		if (backgroundMatch) lineStr = backgroundMatch[1];
@@ -62,7 +61,7 @@ export function parseLRC(lrc: string): LyricLine[] {
 	lyricLines.sort((a, b) => a.startTime - b.startTime);
 	for (const [prev, curr] of pairwise(lyricLines))
 		prev.endTime = prev.words[0].endTime = curr.startTime;
-	return lyricLines;
+	return lyricLines.filter((line) => line.words[0].word);
 }
 
 /**
