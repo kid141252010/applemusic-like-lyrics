@@ -297,7 +297,9 @@ lyricPlayer.addEventListener("line-click", (evt) => {
 	evt.stopImmediatePropagation();
 	evt.stopPropagation();
 	console.log(e.line, e.lineIndex);
-	audio.currentTime = e.line.getLine().startTime / 1000;
+	const time = e.line.getLine().startTime;
+	lyricPlayer.setCurrentTime(time, true);
+	audio.currentTime = time / 1000;
 });
 
 const stats = new Stats();
