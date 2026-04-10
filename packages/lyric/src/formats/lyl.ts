@@ -25,7 +25,6 @@ export function parseLYL(lyl: string): LyricLine[] {
 	const bgRegex = /^[(（](.+)[)）]$/;
 
 	for (const lineStr of lines) {
-		if (lineStr.startsWith("#") || lineStr.startsWith("{")) continue;
 		if (lineStr === "[type:LyricifyLines]") continue;
 
 		const timeMatch = lineStr.match(timeRegex);

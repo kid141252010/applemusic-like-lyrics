@@ -32,7 +32,6 @@ export function parseLRC(lrc: string): LyricLine[] {
 		.filter((l) => l.length > 0);
 	const lyricLines: LyricLine[] = [];
 	for (let lineStr of lines) {
-		if (lineStr.startsWith("#") || lineStr.startsWith("{")) continue;
 		if (tagRegex.test(lineStr)) continue;
 		const timeStamps: number[] = [];
 		while (true) {

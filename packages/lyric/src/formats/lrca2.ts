@@ -30,7 +30,6 @@ export function parseLRCa2(lrc: string): LyricLine[] {
 	const wordTimestampRegex = /<((?:\d+:)*\d+(?:\.\d+)?)>/;
 	const wordTimestampPrefixRegex = /^<((?:\d+:)*\d+(?:\.\d+)?)>/;
 	for (let lineStr of lines) {
-		if (lineStr.startsWith("#") || lineStr.startsWith("{")) continue;
 		const tagMatch = lineStr.match(/^\[([a-z]):(.+)\]$/i);
 		if (tagMatch) continue;
 		const lineTimeStampmatch = lineStr.match(lineTimeStampRegex);
