@@ -12,6 +12,7 @@ import {
 	createLine,
 	createWord,
 	formatTime,
+	MAX_LRC_TIMESTAMP,
 	normalizeTimestamp,
 	pairwise,
 	parseTime,
@@ -52,7 +53,7 @@ export function parseLRC(lrc: string): LyricLine[] {
 			lyricLines.push(
 				createLine({
 					startTime: t,
-					endTime: t,
+					endTime: MAX_LRC_TIMESTAMP,
 					words: [createWord({ word: lineStr, startTime: t, endTime: t })],
 					isBG,
 				}),
