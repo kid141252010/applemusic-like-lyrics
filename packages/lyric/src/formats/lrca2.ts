@@ -38,6 +38,7 @@ export function parseLRCa2(lrc: string): LyricLine[] {
 		const lineStartTime = parseTime(lineTimeStr);
 		if (Number.isNaN(lineStartTime)) continue;
 		lineStr = lineStr.slice(lineTimeStamp.length).trim();
+		if (!lineStr) continue;
 
 		const lineItems: (number | string)[] = [];
 		while (lineStr.length) {

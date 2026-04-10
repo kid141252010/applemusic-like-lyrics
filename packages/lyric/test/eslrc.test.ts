@@ -48,6 +48,15 @@ describe("eslrc", () => {
 		expect(lines[0].words[0].endTime).toBe(60039999);
 	});
 
+	it("ignores empty lines and lines with only whitespace", () => {
+		const lines = parseESLRC(
+			"[00:01.000]   \n[00:02.000]\n[00:10.82]Test[00:10.97] Word[00:12.62]\n   \n[00:12.62]Next[00:13.20] line[00:14.10]\n   \n",
+		);
+		expect(lines).toHaveLength(2);
+		expect(lines[0].words[0].word).toBe("Test");
+		expect(lines[1].words[0].word).toBe("Next");
+	});
+
 	it("stringifies to expected eslrc text", () => {
 		const result = stringifyESLRC([
 			{

@@ -45,6 +45,7 @@ export function parseLRC(lrc: string): LyricLine[] {
 		}
 		if (timeStamps.length === 0) continue;
 		lineStr = lineStr.trim();
+		if (!lineStr) continue;
 		const backgroundMatch = lineStr.match(bgRegex);
 		const isBG = Boolean(backgroundMatch);
 		if (backgroundMatch) lineStr = backgroundMatch[1];

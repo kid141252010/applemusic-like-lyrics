@@ -42,6 +42,15 @@ describe("lys", () => {
 		expect(lines[1].words.map((w) => w.word).join("")).toBe("World");
 	});
 
+	it("ignores empty lines and lines with only whitespace", () => {
+		const lines = parseLYS(
+			"[0]   \n[3]\n[0]Hello(1000,500) World(1500,500)\n   \n\n[0]Next(2000,500) line(2500,500)\n   \n",
+		);
+		expect(lines).toHaveLength(2);
+		expect(lines[0].words[0].word).toBe("Hello");
+		expect(lines[1].words[0].word).toBe("Next");
+	});
+
 	it("stringifies words and preserves spaces", () => {
 		const result = stringifyLYS([
 			{

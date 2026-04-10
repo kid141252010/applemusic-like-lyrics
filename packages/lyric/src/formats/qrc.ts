@@ -38,7 +38,8 @@ export function parseQRC(qrc: string): LyricLine[] {
 			const lineDuration = Number(lineDurStr);
 
 			const words: LyricWord[] = [];
-			const lineContent = lineStr.slice(linePrefix.length);
+			const lineContent = lineStr.slice(linePrefix.length).trim();
+			if (!lineContent) return null;
 
 			for (const wordMatch of lineContent.matchAll(wordPattern)) {
 				const [, wordText, wordStartStr, wordDurStr] = wordMatch;

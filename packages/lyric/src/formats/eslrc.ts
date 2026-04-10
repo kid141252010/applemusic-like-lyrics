@@ -32,6 +32,7 @@ function parseESLRCLine(rawLine: string): LyricLine | null {
 	if (!first) return null;
 	src = src.slice(first.length);
 	let startTime = first.time;
+	if (!src.trim()) return null;
 
 	const words: LyricWord[] = [];
 	while (src.trim().length > 0) {

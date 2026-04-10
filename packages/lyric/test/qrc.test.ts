@@ -30,6 +30,14 @@ describe("qrc", () => {
 		expect(lines[0].words[0].word).toBe("Hello");
 	});
 
+	it("ignores empty lines and lines with only whitespace", () => {
+		const lines = parseQRC(
+			"[0,20]   \n[0,20]\n[0,20]Test(10,10)\n   \n\n[0,20]   \n",
+		);
+		expect(lines).toHaveLength(1);
+		expect(lines[0].words[0].word).toBe("Test");
+	});
+
 	it("stringifies words and preserves spaces", () => {
 		const result = stringifyQRC([
 			{

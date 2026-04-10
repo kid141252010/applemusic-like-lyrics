@@ -51,7 +51,9 @@ export function parseYRC(yrc: string): LyricLine[] {
 			const lineDuration = Number(lineDurStr);
 
 			const words: LyricWord[] = [];
-			let lineContent = lineStr.slice(linePrefix.length);
+			let lineContent = lineStr.slice(linePrefix.length).trim();
+			if (!lineContent) return null;
+
 			let lastStart = -1;
 			let lastEnd = -1;
 			while (true) {

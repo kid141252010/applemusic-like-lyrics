@@ -58,6 +58,15 @@ describe("lrca2", () => {
 		});
 	});
 
+	it("ignores empty lines and lines with only whitespace", () => {
+		const lines = parseLRCa2(
+			"[00:00.000]   \n[00:01.000]<00:01.000>Hello<00:02.000>\n   \n\n[00:03.000]<00:03.000>World<00:04.000>\n   \n",
+		);
+		expect(lines).toHaveLength(2);
+		expect(lines[0].words[0].word).toBe("Hello");
+		expect(lines[1].words[0].word).toBe("World");
+	});
+
 	it("stringifies words and preserves spaces", () => {
 		const result = stringifyLRCa2([
 			{

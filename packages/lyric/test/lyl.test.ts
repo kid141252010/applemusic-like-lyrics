@@ -51,6 +51,15 @@ describe("lyl", () => {
 		expect(lines[2].words[0].word).toBe("World");
 	});
 
+	it("trims whitespace from lines and ignore empty lines", () => {
+		const lines = parseLYL(
+			"[0,500]\n[600,1000]   \n[1000,2000]   Hello   \n\n[3000,4000] World \n[5000,6000]   \n",
+		);
+		expect(lines).toHaveLength(2);
+		expect(lines[0].words[0].word).toBe("Hello");
+		expect(lines[1].words[0].word).toBe("World");
+	});
+
 	it("stringifies with header and bg markers", () => {
 		const result = stringifyLYL([
 			{

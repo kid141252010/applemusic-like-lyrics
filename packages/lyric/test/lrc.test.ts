@@ -111,6 +111,15 @@ describe("lrc", () => {
 		expect(lines[2].words[0].word).toBe("World");
 	});
 
+	it("trims whitespace from lines and ignore empty lines", () => {
+		const lines = parseLRC(
+			"[00:00.000]\n[00:01.000]   \n[00:01.120] Hello   \n\n[00:03.000] World \n[00:05.000]   \n",
+		);
+		expect(lines).toHaveLength(2);
+		expect(lines[0].words[0].word).toBe("Hello");
+		expect(lines[1].words[0].word).toBe("World");
+	});
+
 	it("stringifies background lines with parentheses and normal lines without", () => {
 		const lines = [
 			{
@@ -177,9 +186,9 @@ describe("lrc", () => {
 		expect(stringifyLRC([{ ...baseLine, startTime: Number.NaN }])).toBe(
 			"[00:00.000]Hello",
 		);
-		expect(stringifyLRC([{ ...baseLine, startTime: Number.POSITIVE_INFINITY }])).toBe(
-			"[00:00.000]Hello",
-		);
+		expect(
+			stringifyLRC([{ ...baseLine, startTime: Number.POSITIVE_INFINITY }]),
+		).toBe("[00:00.000]Hello");
 	});
 
 	it("keeps parse -> stringify -> parse stable for content and timing", () => {
