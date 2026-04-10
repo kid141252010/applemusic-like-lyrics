@@ -30,11 +30,14 @@ import {
  * @param prop 属性值
  * @returns 对唱与背景标志位
  */
-function parseProp(prop: number): { isDuet: boolean; isBG: boolean } {
+function parseProp(prop: number): {
+	isDuet: boolean | undefined;
+	isBG: boolean | undefined;
+} {
 	if (prop < 0 || prop > 8) prop = 0;
 	return {
-		isDuet: prop % 3 === 2,
-		isBG: prop >= 6,
+		isDuet: prop % 3 === 0 ? undefined : prop % 3 === 2,
+		isBG: prop <= 2 ? undefined : prop >= 6,
 	};
 }
 
@@ -73,6 +76,12 @@ export function parseLYS(lys: string): LyricLine[] {
 		const lineStartTime = words[0]?.startTime ?? 0;
 		const lineEndTime = words[words.length - 1]?.endTime ?? 0;
 		if (!words.length) continue;
+
+		if (props.isBG === undefined)
+			props.isBG =
+				words.length > 0 &&
+				/^[(（]/.test(words[0].word) &&
+				/[）)]$/.test(words[words.length - 1].word);
 
 		if (props.isBG && words.length) {
 			words[0].word = words[0].word.replace(/^[(（]/, "");
