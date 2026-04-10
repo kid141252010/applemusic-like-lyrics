@@ -95,7 +95,7 @@ export function parseLYS(lys: string): LyricLine[] {
 			createLine({
 				startTime: lineStartTime,
 				endTime: lineEndTime,
-				isDuet: props.isDuet,
+				isDuet: !!props.isDuet,
 				isBG: props.isBG,
 				words,
 			}),
