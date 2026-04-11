@@ -6,7 +6,7 @@
 		style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
 	/>
 	<LyricPlayer
-		:lyric-lines="state.lyricLines"
+		:lyric-lines="lyricLines"
 		:current-time="state.currentTime"
 		ref="playerRef"
 		@line-click="e => { if (audioRef) audioRef.currentTime = (e.line.getLine().startTime / 1000) }"
@@ -39,13 +39,13 @@
 <script setup lang="ts">
 import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { parseTTML } from "@applemusic-like-lyrics/lyric";
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, shallowRef } from "vue";
 import {
 	BackgroundRender,
 	type BackgroundRenderRef,
 	LyricPlayer,
 	type LyricPlayerRef,
-} from ".";
+} from "@applemusic-like-lyrics/vue";
 
 const audioRef = ref<HTMLAudioElement>();
 const state = reactive({
@@ -53,8 +53,8 @@ const state = reactive({
 	albumUrl: "",
 	albumIsVideo: false,
 	currentTime: 0,
-	lyricLines: [] as LyricLine[],
 });
+const lyricLines = shallowRef<LyricLine[]>([]);
 
 const playerRef = ref<LyricPlayerRef>();
 const bgRef = ref<BackgroundRenderRef>();
@@ -117,7 +117,7 @@ function onClickOpenTTMLLyric() {
 			const text = await file.text();
 			const result = parseTTML(text);
 			console.log("parseTTML", result);
-			state.lyricLines = result.lines;
+			lyricLines.value = result.lines;
 		}
 	};
 	input.click();

@@ -6,7 +6,7 @@
  */
 import GUI from "lil-gui";
 import Stats from "stats.js";
-import { MeshGradientRenderer } from "./bg-render";
+import { MeshGradientRenderer } from "@applemusic-like-lyrics/core";
 
 const debugValues = {
 	image: new URL(location.href).searchParams.get("image") || "",
