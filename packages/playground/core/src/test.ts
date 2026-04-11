@@ -23,8 +23,17 @@ import {
 	MeshGradientRenderer,
 	PixiRenderer,
 } from "@applemusic-like-lyrics/core";
-import { DomLyricPlayer, type LyricLineMouseEvent } from "@applemusic-like-lyrics/core";
-import type { SpringParams } from "./utils/spring";
+import {
+	DomLyricPlayer,
+	type LyricLineMouseEvent,
+} from "@applemusic-like-lyrics/core";
+
+export interface SpringParams {
+	mass: number; // = 1.0
+	damping: number; // = 10.0
+	stiffness: number; // = 100.0
+	soft: boolean; // = false
+}
 
 (window as any).lyrics = lyrics;
 

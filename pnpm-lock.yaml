@@ -252,6 +252,10 @@ importers:
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0)(sass@1.98.0)(yaml@2.8.3)
 
   packages/playground/core:
+    dependencies:
+      '@types/stats.js':
+        specifier: ^0.17.4
+        version: 0.17.4
     devDependencies:
       '@applemusic-like-lyrics/core':
         specifier: workspace:^
