@@ -7,23 +7,23 @@
 
 import * as lyrics from "@applemusic-like-lyrics/lyric";
 import {
-	parseLrc,
-	parseLys,
-	parseQrc,
-	parseYrc,
+	parseLRC,
+	parseLYS,
+	parseQRC,
+	parseYRC,
 	type LyricLine as RawLyricLine,
 } from "@applemusic-like-lyrics/lyric";
 import type { LyricLine as TTMLLyricLine } from "@applemusic-like-lyrics/ttml";
 import { parseTTML } from "@applemusic-like-lyrics/ttml";
 import GUI from "lil-gui";
 import Stats from "stats.js";
-import type { LyricLine } from ".";
+import type { LyricLine } from "@applemusic-like-lyrics/core";
 import {
 	BackgroundRender,
 	MeshGradientRenderer,
 	PixiRenderer,
-} from "./bg-render";
-import { DomLyricPlayer, type LyricLineMouseEvent } from "./lyric-player";
+} from "@applemusic-like-lyrics/core";
+import { DomLyricPlayer, type LyricLineMouseEvent } from "@applemusic-like-lyrics/core";
 import type { SpringParams } from "./utils/spring";
 
 (window as any).lyrics = lyrics;
@@ -378,13 +378,13 @@ async function loadLyric() {
 	if (lyricSource.endsWith(".ttml")) {
 		lyricPlayer.setLyricLines(parseTTML(content).lyricLines.map(mapTTMLLyric));
 	} else if (lyricSource.endsWith(".lrc")) {
-		lyricPlayer.setLyricLines(parseLrc(content).map(mapLyric));
+		lyricPlayer.setLyricLines(parseLRC(content).map(mapLyric));
 	} else if (lyricSource.endsWith(".yrc")) {
-		lyricPlayer.setLyricLines(parseYrc(content).map(mapLyric));
+		lyricPlayer.setLyricLines(parseYRC(content).map(mapLyric));
 	} else if (lyricSource.endsWith(".lys")) {
-		lyricPlayer.setLyricLines(parseLys(content).map(mapLyric));
+		lyricPlayer.setLyricLines(parseLYS(content).map(mapLyric));
 	} else if (lyricSource.endsWith(".qrc")) {
-		lyricPlayer.setLyricLines(parseQrc(content).map(mapLyric));
+		lyricPlayer.setLyricLines(parseQRC(content).map(mapLyric));
 	} else if (lyricFile === "bug") {
 		const buildLyricLines = (
 			lyric: string,

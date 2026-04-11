@@ -1,7 +1,7 @@
 import {
 	type TextLayoutConfig,
 	layoutWord,
-} from "./lyric-player/canvas/text-layout";
+} from "@amll-core-src/lyric-player/canvas/text-layout";
 
 const canvas = document.createElement("canvas");
 canvas.width = 600 * devicePixelRatio;

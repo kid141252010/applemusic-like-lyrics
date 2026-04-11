@@ -39,7 +39,7 @@ yarn add @applemusic-like-lyrics/core # using yarn
 
 For detailed API documentation, please refer to [./docs/modules.md](./docs/modules.md)
 
-A test program can be found in [./src/test.ts](./src/test.ts).
+A test program can be found in [../playground/core/src/test.ts](../playground/core/src/test.ts).
 
 ```typescript
 import { LyricPlayer } from "@applemusic-like-lyrics/core";
