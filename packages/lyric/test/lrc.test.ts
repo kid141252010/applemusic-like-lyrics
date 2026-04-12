@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseLRC, stringifyLRC } from "../src/formats/lrc";
+import { parseLrc, stringifyLrc } from "../src/formats/lrc";
 import { timeStampsTestCases } from "./timestampcase.fixture";
 
 describe("lrc", () => {
 	it("parses basic timestamped lines", () => {
-		const lines = parseLRC("[00:01.120]Hello\n[00:03.000]World");
+		const lines = parseLrc("[00:01.120]Hello\n[00:03.000]World");
 
 		expect(lines).toHaveLength(2);
 		expect(lines[0].startTime).toBe(1120);
@@ -15,7 +15,7 @@ describe("lrc", () => {
 	});
 
 	it("handles CRLF line breaks correctly", () => {
-		const lines = parseLRC("[00:01.120]Hello\r\n[00:03.000]World");
+		const lines = parseLrc("[00:01.120]Hello\r\n[00:03.000]World");
 
 		expect(lines).toHaveLength(2);
 		expect(lines[0].startTime).toBe(1120);
@@ -27,7 +27,7 @@ describe("lrc", () => {
 	});
 
 	it("parses multiple timestamps for the same line", () => {
-		const lines = parseLRC("[00:01.120][00:02.000]Hello");
+		const lines = parseLrc("[00:01.120][00:02.000]Hello");
 
 		expect(lines).toHaveLength(2);
 		expect(lines[0].startTime).toBe(1120);
@@ -39,7 +39,7 @@ describe("lrc", () => {
 	});
 
 	it("ignores lines without timestamps", () => {
-		const lines = parseLRC(
+		const lines = parseLrc(
 			"This is a line without timestamp\n[ar: Artist]\n[00:01.120]Hello\n# This is a comment\n{ some: 'metadata' }\n\n[00:03.000]World",
 		);
 
@@ -53,7 +53,7 @@ describe("lrc", () => {
 	});
 
 	it("ignores lines with bad timestamps", () => {
-		const lines = parseLRC(
+		const lines = parseLrc(
 			"[00:01.120]Hello\n[invalid]Bad line\n[xx:yy.zzz]Bad line\n[-1:00.000]Bad line\n[NaN:NaN]Bad line\n[00:03.000]World",
 		);
 
@@ -67,7 +67,7 @@ describe("lrc", () => {
 	});
 
 	it("sorts lines by timestamp and sets end times correctly", () => {
-		const lines = parseLRC("[00:03.000]World\n[00:01.120][00:05.000]Hello");
+		const lines = parseLrc("[00:03.000]World\n[00:01.120][00:05.000]Hello");
 
 		expect(lines).toHaveLength(3);
 		expect(lines[0].startTime).toBe(1120);
@@ -85,7 +85,7 @@ describe("lrc", () => {
 		const input = timeStampsTestCases
 			.map(([ts, ms]) => `[${ts}]Should be ${ts} = ${ms} ms`)
 			.join("\n");
-		const lines = parseLRC(input);
+		const lines = parseLrc(input);
 		expect(lines).toHaveLength(timeStampsTestCases.length);
 		lines.forEach((line, i) => {
 			const [ts, ms] = timeStampsTestCases[i];
@@ -95,7 +95,7 @@ describe("lrc", () => {
 	});
 
 	it("identifies background lines with parentheses", () => {
-		const lines = parseLRC(
+		const lines = parseLrc(
 			"[00:01.120](Hello)\n[00:03.000]（Hi）\n[00:03.000]World",
 		);
 
@@ -112,7 +112,7 @@ describe("lrc", () => {
 	});
 
 	it("trims whitespace from lines and ignore empty lines, while preserving end times", () => {
-		const lines = parseLRC(
+		const lines = parseLrc(
 			"[00:00.000]\n[00:01.000]   \n[00:01.120] Hello   \n[00:02.333]\n[00:03.000] World \n[00:05.000]   \n",
 		);
 		expect(lines).toHaveLength(2);
@@ -148,12 +148,12 @@ describe("lrc", () => {
 			},
 		];
 
-		const result = stringifyLRC(lines);
+		const result = stringifyLrc(lines);
 		expect(result).toBe("[00:01.120](Hello)\n[00:03.000]World");
 	});
 
 	it("stringifies lines to expected lrc text", () => {
-		const result = stringifyLRC([
+		const result = stringifyLrc([
 			{
 				startTime: 1120,
 				endTime: 3000,
@@ -182,22 +182,22 @@ describe("lrc", () => {
 			isDuet: false,
 		};
 
-		expect(stringifyLRC([{ ...baseLine, startTime: -1 }])).toBe(
+		expect(stringifyLrc([{ ...baseLine, startTime: -1 }])).toBe(
 			"[00:00.000]Hello",
 		);
-		expect(stringifyLRC([{ ...baseLine, startTime: Number.NaN }])).toBe(
+		expect(stringifyLrc([{ ...baseLine, startTime: Number.NaN }])).toBe(
 			"[00:00.000]Hello",
 		);
 		expect(
-			stringifyLRC([{ ...baseLine, startTime: Number.POSITIVE_INFINITY }]),
+			stringifyLrc([{ ...baseLine, startTime: Number.POSITIVE_INFINITY }]),
 		).toBe("[00:00.000]Hello");
 	});
 
 	it("keeps parse -> stringify -> parse stable for content and timing", () => {
 		const input = "[00:01.120]Hello\n[00:03.000](World)";
-		const first = parseLRC(input);
-		const text = stringifyLRC(first);
-		const second = parseLRC(text);
+		const first = parseLrc(input);
+		const text = stringifyLrc(first);
+		const second = parseLrc(text);
 
 		expect(second).toEqual(first);
 	});
