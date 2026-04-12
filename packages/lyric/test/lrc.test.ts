@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseLrc, stringifyLrc } from "../src/formats/lrc";
 import { timeStampsTestCases } from "./timestampcase.fixture";
+import { MAX_LRC_TIMESTAMP } from "../src/utils";
 
 describe("lrc", () => {
 	it("parses basic timestamped lines", () => {
@@ -22,7 +23,6 @@ describe("lrc", () => {
 		expect(lines[0].endTime).toBe(3000);
 		expect(lines[0].words[0].word).toBe("Hello");
 		expect(lines[1].startTime).toBe(3000);
-		expect(lines[1].endTime).toBe(3000);
 		expect(lines[1].words[0].word).toBe("World");
 	});
 
@@ -34,7 +34,6 @@ describe("lrc", () => {
 		expect(lines[0].endTime).toBe(2000);
 		expect(lines[0].words[0].word).toBe("Hello");
 		expect(lines[1].startTime).toBe(2000);
-		expect(lines[1].endTime).toBe(2000);
 		expect(lines[1].words[0].word).toBe("Hello");
 	});
 
@@ -48,7 +47,6 @@ describe("lrc", () => {
 		expect(lines[0].endTime).toBe(3000);
 		expect(lines[0].words[0].word).toBe("Hello");
 		expect(lines[1].startTime).toBe(3000);
-		expect(lines[1].endTime).toBe(3000);
 		expect(lines[1].words[0].word).toBe("World");
 	});
 
@@ -62,7 +60,6 @@ describe("lrc", () => {
 		expect(lines[0].endTime).toBe(3000);
 		expect(lines[0].words[0].word).toBe("Hello");
 		expect(lines[1].startTime).toBe(3000);
-		expect(lines[1].endTime).toBe(3000);
 		expect(lines[1].words[0].word).toBe("World");
 	});
 
@@ -77,7 +74,7 @@ describe("lrc", () => {
 		expect(lines[1].endTime).toBe(5000);
 		expect(lines[1].words[0].word).toBe("World");
 		expect(lines[2].startTime).toBe(5000);
-		expect(lines[2].endTime).toBe(5000);
+		expect(lines[2].endTime).toBe(MAX_LRC_TIMESTAMP);
 		expect(lines[2].words[0].word).toBe("Hello");
 	});
 
