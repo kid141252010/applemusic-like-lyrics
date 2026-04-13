@@ -14,6 +14,10 @@ import { Spring, type SpringParams } from "../utils/spring.ts";
 import { BottomLineEl } from "./bottom-line.ts";
 import { InterludeDots } from "./dom/interlude-dots.ts";
 import { LyricLineRenderMode, MaskObsceneWordsMode } from "./index.ts";
+import {
+	collectActiveLineIndexes,
+	pickFocusLineIndex,
+} from "./line-state.ts";
 
 /**
  * 歌词播放器的基类，已经包含了有关歌词操作和排版的功能，子类需要为其实现对应的显示展示操作
@@ -638,140 +642,81 @@ export abstract class LyricPlayerBase
 	 * @param time 当前播放进度，单位为毫秒
 	 */
 	setCurrentTime(time: number, isSeek = false) {
-		// 我在这里定义了歌词的选择状态：
-		// 普通行：当前不处于时间范围内的歌词行
-		// 热行：当前绝对处于播放时间内的歌词行，且一般会被立刻加入到缓冲行中
-		// 缓冲行：一般处于播放时间后的歌词行，会因为当前播放状态的缘故推迟解除状态
-
-		// 然后我们需要让歌词行为如下：
-		// 如果当前仍有缓冲行的情况下加入新热行，则不会解除当前缓冲行，且也不会修改当前滚动位置
-		// 如果当前所有缓冲行都将被删除且没有新热行加入，则删除所有缓冲行，且也不会修改当前滚动位置
-		// 如果当前所有缓冲行都将被删除且有新热行加入，则删除所有缓冲行并加入新热行作为缓冲行，然后修改当前滚动位置
-
 		this.currentTime = time;
 
 		if (!this.initialLayoutFinished && !isSeek) return;
 
-		const removedHotIds = new Set<number>();
-		const removedIds = new Set<number>();
-		const addedIds = new Set<number>();
+		const prevHotLines = new Set(this.hotLines);
+		const prevBufferedLines = new Set(this.bufferedLines);
+		const nextHotLines = collectActiveLineIndexes(this.processedLines, time);
 
-		// 先检索当前已经超出时间范围的缓冲行，列入待删除集内
-		for (const lastHotId of this.hotLines) {
-			const line = this.processedLines[lastHotId];
-			if (line) {
-				if (line.isBG) continue;
-				const nextLine = this.processedLines[lastHotId + 1];
-				if (nextLine?.isBG) {
-					const nextMainLine = this.processedLines[lastHotId + 2];
-					const startTime = Math.min(line.startTime, nextLine?.startTime);
-					const endTime = Math.min(
-						Math.max(line.endTime, nextMainLine?.startTime ?? Number.MAX_VALUE),
-						Math.max(line.endTime, nextLine?.endTime),
-					);
-					if (startTime > time || endTime <= time) {
-						this.hotLines.delete(lastHotId);
-						removedHotIds.add(lastHotId);
-						this.hotLines.delete(lastHotId + 1);
-						removedHotIds.add(lastHotId + 1);
-						if (isSeek) {
-							this.currentLyricLineObjects[lastHotId]?.disable();
-							this.currentLyricLineObjects[lastHotId + 1]?.disable();
-						}
-					}
-				} else if (line.startTime > time || line.endTime <= time) {
-					this.hotLines.delete(lastHotId);
-					removedHotIds.add(lastHotId);
-					if (isSeek) this.currentLyricLineObjects[lastHotId]?.disable();
-				}
-			} else {
-				this.hotLines.delete(lastHotId);
-				removedHotIds.add(lastHotId);
-				if (isSeek) this.currentLyricLineObjects[lastHotId]?.disable();
-			}
+		this.hotLines.clear();
+		for (const id of nextHotLines) {
+			this.hotLines.add(id);
 		}
-		this.currentLyricLineObjects.forEach((lineObj, id, arr) => {
-			const line = lineObj.getLine();
 
-			if (!line.isBG && line.startTime <= time && line.endTime > time) {
-				if (isSeek) {
-					lineObj.enable(time, this.isPlaying);
-				}
-
-				if (!this.hotLines.has(id)) {
-					this.hotLines.add(id);
-					addedIds.add(id);
-
-					if (!isSeek) {
-						lineObj.enable();
-					}
-
-					if (arr[id + 1]?.getLine()?.isBG) {
-						this.hotLines.add(id + 1);
-						addedIds.add(id + 1);
-						if (isSeek) {
-							arr[id + 1].enable(time, this.isPlaying);
-						} else {
-							arr[id + 1].enable();
-						}
-					}
-				}
-			}
-		});
-		for (const v of this.bufferedLines) {
-			if (!this.hotLines.has(v)) {
-				removedIds.add(v);
-				if (isSeek) this.currentLyricLineObjects[v]?.disable();
-			}
-		}
 		if (isSeek) {
+			this.currentLyricLineObjects.forEach((lineObj, id) => {
+				if (nextHotLines.has(id)) {
+					lineObj.enable(time, this.isPlaying);
+				} else {
+					lineObj.disable();
+				}
+			});
+
 			this.bufferedLines.clear();
-			for (const v of this.hotLines) {
-				this.bufferedLines.add(v);
+			for (const id of nextHotLines) {
+				this.bufferedLines.add(id);
 			}
-
-			if (this.bufferedLines.size > 0) {
-				this.scrollToIndex = Math.min(...this.bufferedLines);
-			} else {
-				const foundIndex = this.processedLines.findIndex(
-					(line) => line.startTime >= time,
-				);
-
-				this.scrollToIndex =
-					foundIndex === -1 ? this.processedLines.length : foundIndex;
-			}
+			this.scrollToIndex = pickFocusLineIndex(
+				this.processedLines,
+				nextHotLines,
+				time,
+			);
 
 			this.resetScroll();
 			this.calcLayout();
-		} else if (removedIds.size > 0 || addedIds.size > 0) {
-			if (removedIds.size === 0 && addedIds.size > 0) {
-				for (const v of addedIds) {
-					this.bufferedLines.add(v);
-					this.currentLyricLineObjects[v]?.enable();
+		} else {
+			const addedIds = new Set<number>();
+			const removedIds = new Set<number>();
+
+			for (const id of nextHotLines) {
+				if (!prevBufferedLines.has(id)) {
+					addedIds.add(id);
 				}
-				this.scrollToIndex = Math.min(...this.bufferedLines);
-				this.calcLayout();
-			} else if (addedIds.size === 0 && removedIds.size > 0) {
-				if (eqSet(removedIds, this.bufferedLines)) {
-					for (const v of this.bufferedLines) {
-						if (!this.hotLines.has(v)) {
-							this.bufferedLines.delete(v);
-							this.currentLyricLineObjects[v]?.disable();
-						}
-					}
-					this.calcLayout();
+			}
+			for (const id of prevBufferedLines) {
+				if (!nextHotLines.has(id)) {
+					removedIds.add(id);
 				}
-			} else {
-				for (const v of addedIds) {
-					this.bufferedLines.add(v);
-					this.currentLyricLineObjects[v]?.enable();
-				}
-				for (const v of removedIds) {
-					this.bufferedLines.delete(v);
-					this.currentLyricLineObjects[v]?.disable();
-				}
-				if (this.bufferedLines.size > 0)
-					this.scrollToIndex = Math.min(...this.bufferedLines);
+			}
+
+			for (const id of addedIds) {
+				this.currentLyricLineObjects[id]?.enable();
+			}
+			for (const id of removedIds) {
+				this.currentLyricLineObjects[id]?.disable();
+			}
+
+			this.bufferedLines.clear();
+			for (const id of nextHotLines) {
+				this.bufferedLines.add(id);
+			}
+
+			const nextFocusIndex = pickFocusLineIndex(
+				this.processedLines,
+				nextHotLines,
+				time,
+			);
+			const hotChanged = !eqSet(prevHotLines, nextHotLines);
+			const bufferedChanged = !eqSet(prevBufferedLines, this.bufferedLines);
+			const focusChanged = this.scrollToIndex !== nextFocusIndex;
+
+			if (focusChanged) {
+				this.scrollToIndex = nextFocusIndex;
+			}
+
+			if (hotChanged || bufferedChanged || focusChanged) {
 				this.calcLayout();
 			}
 		}
@@ -940,8 +885,7 @@ export abstract class LyricPlayerBase
 		let setDots = false;
 		this.currentLyricLineObjects.forEach((lineObj, i) => {
 			const hasBuffered = this.bufferedLines.has(i);
-			const isActive =
-				hasBuffered || (i >= this.scrollToIndex && i < latestIndex);
+			const isActive = hasBuffered;
 			const line = lineObj.getLine();
 
 			const shouldShowDots = interlude && i === interlude[2] + 1;
