@@ -14,10 +14,64 @@ import { Spring, type SpringParams } from "../utils/spring.ts";
 import { BottomLineEl } from "./bottom-line.ts";
 import { InterludeDots } from "./dom/interlude-dots.ts";
 import { LyricLineRenderMode, MaskObsceneWordsMode } from "./index.ts";
-import {
-	collectActiveLineIndexes,
-	pickFocusLineIndex,
-} from "./line-state.ts";
+
+const isLineActiveAtTime = (line: LyricLine, time: number) =>
+	line.startTime <= time && line.endTime > time;
+
+const collectActiveLineIndexes = (lines: LyricLine[], time: number) => {
+	const activeLineIndexes = new Set<number>();
+	for (let i = 0; i < lines.length; i += 1) {
+		if (isLineActiveAtTime(lines[i], time)) {
+			activeLineIndexes.add(i);
+		}
+	}
+	return activeLineIndexes;
+};
+
+const pickLatestActiveLineIndex = (
+	lines: LyricLine[],
+	activeLineIndexes: ReadonlySet<number>,
+	isBG: boolean,
+) => {
+	let result = -1;
+	let resultStartTime = Number.NEGATIVE_INFINITY;
+
+	for (const index of activeLineIndexes) {
+		const line = lines[index];
+		if (!line || line.isBG !== isBG) continue;
+
+		if (
+			line.startTime > resultStartTime ||
+			(line.startTime === resultStartTime && index > result)
+		) {
+			result = index;
+			resultStartTime = line.startTime;
+		}
+	}
+
+	return result === -1 ? undefined : result;
+};
+
+const pickFocusLineIndex = (
+	lines: LyricLine[],
+	activeLineIndexes: ReadonlySet<number>,
+	time: number,
+) => {
+	const activeMain = pickLatestActiveLineIndex(lines, activeLineIndexes, false);
+	if (activeMain !== undefined) return activeMain;
+
+	const activeBackground = pickLatestActiveLineIndex(
+		lines,
+		activeLineIndexes,
+		true,
+	);
+	if (activeBackground !== undefined) return activeBackground;
+
+	const nextMainIndex = lines.findIndex(
+		(line) => !line.isBG && line.startTime >= time,
+	);
+	return nextMainIndex === -1 ? lines.length : nextMainIndex;
+};
 
 /**
  * 歌词播放器的基类，已经包含了有关歌词操作和排版的功能，子类需要为其实现对应的显示展示操作
