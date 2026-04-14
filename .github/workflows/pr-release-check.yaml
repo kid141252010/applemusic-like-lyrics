@@ -28,40 +28,28 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Decide whether a release plan is required
         id: release-requirements
-        run: node .github/scripts/check-release-requirements.mjs
+        run: bun .github/scripts/check-release-requirements.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup cached Node.js for pnpm
-        if: steps.release-requirements.outputs.requires_release_plan == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          cache: pnpm
-
       - name: Install dependencies
         if: steps.release-requirements.outputs.requires_release_plan == 'true'
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: bun install --frozen-lockfile
 
       - name: Set Nx SHAs
         if: steps.release-requirements.outputs.requires_release_plan == 'true'
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@v5
 
       - name: Keep only release plans from this PR
         if: steps.release-requirements.outputs.requires_release_plan == 'true'
@@ -69,7 +57,7 @@ jobs:
 
       - name: Check release plans
         if: steps.release-requirements.outputs.requires_release_plan == 'true'
-        run: pnpm release:plan:check --base="${{ env.NX_BASE }}" --head="${{ env.NX_HEAD }}"
+        run: bun run release:plan:check --base="${{ env.NX_BASE }}" --head="${{ env.NX_HEAD }}"
 
   build-libraries:
     name: Build libs
@@ -78,21 +66,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          cache: pnpm
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: bun install --frozen-lockfile
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -106,6 +88,6 @@ jobs:
           version: v0.13.1
 
       - name: Build publishable libraries
-        run: pnpm ci:build:libs
+        run: bun run ci:build:libs
         env:
           AMLL_GITHUB_IS_ACTION: true

@@ -26,37 +26,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ensure this workflow runs from main
-        if: github.ref_name != 'main'
+      - name: Ensure publish runs from main
+        if: github.event.inputs.mode == 'publish' && github.ref_name != 'main'
         run: |
-          echo "This workflow must be dispatched from the main branch."
+          echo "Publishing must be dispatched from the main branch. Use dry-run mode to test from other branches."
           exit 1
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
-          cache: pnpm
+          node-version: "24"
           registry-url: https://registry.npmjs.org
 
       - name: Verify trusted publishing runtime requirements
-        run: |
-          node --version
-          npm --version
-          node -e "const [major, minor] = process.versions.node.split('.').map(Number); if (major < 22 || (major === 22 && minor < 14)) process.exit(1)"
-          node -e "const version = require('child_process').execSync('npm --version', { encoding: 'utf8' }).trim().split('.').map(Number); if (version[0] < 11 || (version[0] === 11 && version[1] < 5) || (version[0] === 11 && version[1] === 5 && version[2] < 1)) process.exit(1)"
+        run: node .github/scripts/verify-trusted-publishing-runtime.mjs
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: bun install --frozen-lockfile
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -75,24 +70,23 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Ensure release plans exist
-        run: |
-          shopt -s nullglob
-          plans=(.nx/version-plans/*.md)
-          if [ ${#plans[@]} -eq 0 ]; then
-            echo "No release plans were found in .nx/version-plans."
-            exit 1
-          fi
+        run: bash .github/scripts/ensure-release-plans-exist.sh
 
       - name: Dry-run release
-        run: pnpm nx release --dry-run --preid alpha
+        if: github.event.inputs.mode == 'dry-run'
+        run: npx nx release --dry-run --preid alpha
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create release commit and tags
         if: github.event.inputs.mode == 'publish'
-        run: pnpm nx release --skip-publish --preid alpha
+        run: npx nx release --skip-publish --preid alpha
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Force Nx publish executor to npm for OIDC
+        if: github.event.inputs.mode == 'publish'
+        run: node .github/scripts/force-nx-publish-package-manager-npm.cjs
 
       - name: Push release commit and tags
         if: github.event.inputs.mode == 'publish'
@@ -100,4 +94,4 @@ jobs:
 
       - name: Publish packages to npm
         if: github.event.inputs.mode == 'publish'
-        run: pnpm nx release publish
+        run: npx nx release publish
