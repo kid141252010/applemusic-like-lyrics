@@ -1,4 +1,5 @@
 name: Publish to npm
+run-name: Publish to npm (${{ inputs.mode }} on ${{ github.ref_name }})
 
 on:
   workflow_dispatch:
@@ -41,6 +42,11 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
       - name: Verify trusted publishing runtime requirements
         run: node .github/scripts/verify-trusted-publishing-runtime.mjs
 
@@ -66,25 +72,23 @@ jobs:
       - name: Ensure release plans exist
         run: bash .github/scripts/ensure-release-plans-exist.sh
 
-      - name: Dry-run release
-        if: github.event.inputs.mode == 'dry-run'
-        run: npx nx release --dry-run --preid alpha
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create release commit and tags
-        if: github.event.inputs.mode == 'publish'
         run: npx nx release --skip-publish --preid alpha
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Force Nx publish executor to npm for OIDC
-        if: github.event.inputs.mode == 'publish'
-        run: node .github/scripts/force-nx-publish-package-manager-npm.cjs
+      - name: Format package.json files and amend release commit
+        run: bash .github/scripts/format-package-json-and-amend.sh
 
       - name: Push release commit and tags
         if: github.event.inputs.mode == 'publish'
         run: git push origin HEAD:main --follow-tags
+
+      - name: Force Nx publish executor to npm for OIDC
+        run: node .github/scripts/force-nx-publish-package-manager-npm.mjs
+
+      - name: Prepare package manifests for npm publish
+        run: node .github/scripts/prepare-npm-manifests-for-publish.mjs
 
       - name: Publish packages to npm
         if: github.event.inputs.mode == 'publish'
