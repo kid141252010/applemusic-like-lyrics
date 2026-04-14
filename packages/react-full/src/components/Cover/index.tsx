@@ -6,10 +6,11 @@
 import classNames from "classnames";
 import { Squircle } from "corner-smoothing";
 import {
+	type ForwardRefExoticComponent,
 	forwardRef,
 	type HTMLProps,
+	type RefAttributes,
 	useEffect,
-	useImperativeHandle,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -17,19 +18,20 @@ import {
 } from "react";
 import styles from "./index.module.css";
 
+export type CoverProps = {
+	coverUrl?: string;
+	coverIsVideo?: boolean;
+	coverVideoPaused?: boolean;
+	musicPaused?: boolean;
+	pauseShrinkAspect?: number;
+} & HTMLProps<HTMLDivElement>;
+
 /**
  * 一个专辑图组件
  */
-export const Cover = forwardRef<
-	HTMLDivElement,
-	{
-		coverUrl?: string;
-		coverIsVideo?: boolean;
-		coverVideoPaused?: boolean;
-		musicPaused?: boolean;
-		pauseShrinkAspect?: number;
-	} & HTMLProps<HTMLElement>
->(
+export const Cover: ForwardRefExoticComponent<
+	CoverProps & RefAttributes<HTMLDivElement>
+> = forwardRef<HTMLDivElement, CoverProps>(
 	(
 		{
 			coverUrl,
@@ -75,9 +77,8 @@ export const Cover = forwardRef<
 					obz.disconnect();
 				};
 			}
+			return;
 		}, []);
-
-		useImperativeHandle(ref, () => frameRef.current!, []);
 
 		return (
 			<div
@@ -87,7 +88,14 @@ export const Cover = forwardRef<
 						"--scale-level": pauseShrinkAspect ?? 0.75,
 					} as React.CSSProperties
 				}
-				ref={frameRef}
+				ref={(node) => {
+					frameRef.current = node;
+					if (typeof ref === "function") {
+						ref(node);
+					} else if (ref) {
+						ref.current = node;
+					}
+				}}
 				{...rest}
 			>
 				<Squircle
@@ -105,19 +113,16 @@ export const Cover = forwardRef<
 							playsInline
 							crossOrigin="anonymous"
 							ref={videoRef}
-							{...rest}
 						/>
 					) : (
 						<div
 							className={styles.coverInner}
-							alt="cover"
 							style={
 								{
 									backgroundImage: `url(${coverUrl})`,
 									"--scale-level": pauseShrinkAspect ?? 0.75,
 								} as React.CSSProperties
 							}
-							{...rest}
 						/>
 					)}
 				</Squircle>
