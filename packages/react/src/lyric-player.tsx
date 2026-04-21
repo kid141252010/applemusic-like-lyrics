@@ -2,6 +2,7 @@ import type {
 	LyricLine,
 	LyricLineMouseEvent,
 	LyricPlayerBase,
+	OptimizeLyricOptions,
 	spring,
 } from "@applemusic-like-lyrics/core";
 import {
@@ -82,6 +83,10 @@ export interface LyricPlayerProps {
 	 * 设置不雅用语掩码使用的字符，默认为 `*`
 	 */
 	maskObsceneWordChar?: string;
+	/**
+	 * 设置歌词优化选项
+	 */
+	optimizeOptions?: OptimizeLyricOptions;
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
 	 */
@@ -181,6 +186,7 @@ export const LyricPlayer: ForwardRefExoticComponent<
 			maskObsceneWordsMode,
 			maskObsceneWordChar,
 			hidePassedLines,
+			optimizeOptions,
 			lyricLines,
 			currentTime,
 			isSeeking,
@@ -212,14 +218,23 @@ export const LyricPlayer: ForwardRefExoticComponent<
 		}, [lyricPlayer]);
 
 		useLayoutEffect(() => {
+			if (optimizeOptions !== undefined) {
+				corePlayer?.setOptimizeOptions(optimizeOptions);
+			}
+
 			if (lyricLines !== undefined) {
 				corePlayer?.setLyricLines(lyricLines, currentTimeRef.current);
+
+				if (currentTimeRef.current !== undefined) {
+					corePlayer?.setCurrentTime(currentTimeRef.current, true);
+				}
+
 				corePlayer?.update();
 			} else {
 				corePlayer?.setLyricLines([]);
 				corePlayer?.update();
 			}
-		}, [corePlayer, lyricLines]);
+		}, [corePlayer, lyricLines, optimizeOptions]);
 
 		useEffect(() => {
 			if (!disabled) {
@@ -281,11 +296,14 @@ export const LyricPlayer: ForwardRefExoticComponent<
 			corePlayer?.setEnableBlur(enableBlur ?? true);
 		}, [corePlayer, enableBlur]);
 
-		useEffect(() => {
+		useLayoutEffect(() => {
 			if (currentTime !== undefined) {
 				corePlayer?.setCurrentTime(currentTime, isSeeking);
 				currentTimeRef.current = currentTime;
-			} else corePlayer?.setCurrentTime(0);
+			} else {
+				corePlayer?.setCurrentTime(0);
+				currentTimeRef.current = 0;
+			}
 		}, [corePlayer, currentTime, isSeeking]);
 
 		useEffect(() => {
