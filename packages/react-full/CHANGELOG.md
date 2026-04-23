@@ -1,3 +1,15 @@
+## 0.3.2 (2026-04-23)
+
+### Patch Changes
+
+- **fix:** 在各绑定中暴露歌词优化选项 ([#492](https://github.com/amll-dev/applemusic-like-lyrics/pull/492))
+- **refactor(core):** 重构平均行长度实现 ([#494](https://github.com/amll-dev/applemusic-like-lyrics/pull/494))
+- **build:** 内联 CSS 中的 url ([#493](https://github.com/amll-dev/applemusic-like-lyrics/pull/493))
+
+### Contributors
+
+- apoint123 [@apoint123](https://github.com/apoint123)
+
 ## 0.3.1 (2026-04-14)
 
 ### Patch Changes

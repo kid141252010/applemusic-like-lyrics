@@ -1,3 +1,15 @@
+## 0.4.1 (2026-04-23)
+
+### Patch Changes
+
+- **fix:** 在各绑定中暴露歌词优化选项 ([#492](https://github.com/amll-dev/applemusic-like-lyrics/pull/492))
+- **fix(vue):** 修复掩码模式错误的类型 ([#496](https://github.com/amll-dev/applemusic-like-lyrics/pull/496))
+- **refactor(core):** 重构平均行长度实现 ([#494](https://github.com/amll-dev/applemusic-like-lyrics/pull/494))
+
+### Contributors
+
+- apoint123 [@apoint123](https://github.com/apoint123)
+
 ## 0.4.0 (2026-04-14)
 
 ### Minor Changes

@@ -1,3 +1,9 @@
+# 1.0.0 (2026-04-23)
+
+### Updated Dependencies
+
+- Updated `@applemusic-like-lyrics/ttml` to `1.0.0`
+
 ## 1.0.0-alpha.0 (2026-04-14)
 
 ### Major Changes
