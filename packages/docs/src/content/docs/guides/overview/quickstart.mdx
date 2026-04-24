@@ -2,7 +2,12 @@
 title: 快速开始
 ---
 
-import { Tabs, TabItem } from "@astrojs/starlight/components";
+import {
+    CardGrid,
+    LinkCard,
+    Tabs,
+    TabItem,
+} from "@astrojs/starlight/components";
 
 下面快速介绍如何将 AMLL 歌词组件集成到你的项目中。请注意，AMLL 不提供 CDN 引入方式，必须使用 bundler。
 
@@ -66,6 +71,26 @@ yarn add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge
 </TabItem>
 </Tabs>
 
+接下来你可以使用原生包，也可以使用 React 或 Vue 绑定。
+
+<CardGrid>
+    <LinkCard
+        title="使用 Vanilla 方式引入"
+        description="不使用前端框架"
+        href="#使用-vanilla-方式引入"
+    />
+    <LinkCard
+        title="使用 React 绑定"
+        description="项目使用 React 框架"
+        href="#使用-react-绑定"
+    />
+    <LinkCard
+        title="使用 Vue 绑定"
+        description="项目使用 Vue 框架"
+        href="#使用-vue-绑定"
+    />
+</CardGrid>
+
 ## 使用 Vanilla 方式引入
 
 AMLL 核心库是框架无关的。无论是否使用框架，均可使用此方法引入。
@@ -89,7 +114,7 @@ player.setCurrentTime(0);
 player.update(0);
 ```
 
-其中的 [`setLyricLines`](/reference/core/classlyricplayerbase/#setlyriclines) 方法接受 [`LyricLine`](/reference/core/interfacelyricline) 类型的对象。在传入之后不应再修改这一对象的属性，否则可能导致问题。
+其中的 [`setLyricLines`](/reference/core/classlyricplayerbase#setlyriclines) 方法接受 [`LyricLine`](/reference/core/interfacelyricline) 类型的对象。在传入之后不应再修改这一对象的属性，否则可能导致问题。
 
 [`setCurrentTime`](/reference/core/classlyricplayerbase#setcurrenttime) 方法与 [`update`](/reference/core/classlyricplayerbase#update) 方法接受当前播放进度（整数，单位毫秒）作为参数，**在播放时需要逐帧调用**。此外在每次 `setLyricLines` 之后也应调用一次 `update` 以更新内容。
 
