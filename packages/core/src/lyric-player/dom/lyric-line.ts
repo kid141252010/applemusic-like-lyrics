@@ -95,6 +95,7 @@ export class LyricLineEl extends LyricLineBase {
 
 	private targetBrightAlpha = 1.0;
 	private targetDarkAlpha = 0.2;
+	private lastMaskLayoutKey = "";
 
 	// Unicode 标准的 Grapheme Cluster 分割器
 	// 用于正确处理 emoji、复合字符等
@@ -756,8 +757,10 @@ export class LyricLineEl extends LyricLineBase {
 
 	override onLineSizeChange(_size: [number, number]): void {
 		const main = this.element.children[0] as HTMLDivElement;
-		if (main) this.lineBreaker.maybeReflow(main);
-		this.updateMaskImageSync();
+		const lineBreakChanged = main ? this.lineBreaker.maybeReflow(main) : false;
+		if (lineBreakChanged || this.lastMaskLayoutKey === "") {
+			this.updateMaskImageSync();
+		}
 	}
 	updateMaskImageSync(): void {
 		for (const word of this.splittedWords) {
@@ -772,15 +775,32 @@ export class LyricLineEl extends LyricLineBase {
 				word.padding = 0;
 			}
 		}
-		if (this.lyricPlayer.supportMaskImage) {
-			this.generateWebAnimationBasedMaskImage();
-		} else {
-			this.generateCalcBasedMaskImage();
+		const maskLayoutKey = this.getMaskLayoutKey();
+		if (maskLayoutKey !== this.lastMaskLayoutKey) {
+			if (this.lyricPlayer.supportMaskImage) {
+				this.generateWebAnimationBasedMaskImage();
+			} else {
+				this.generateCalcBasedMaskImage();
+			}
+			this.lastMaskLayoutKey = maskLayoutKey;
 		}
 		if (this.isEnabled) {
 			const isPlayerRunning = this.lyricPlayer.getIsPlaying?.() ?? true;
 			this.enable(this.lyricPlayer.getCurrentTime(), isPlayerRunning);
 		}
+	}
+
+	private getMaskLayoutKey(): string {
+		return [
+			this.lyricPlayer.getWordFadeWidth(),
+			this.lyricPlayer.supportMaskImage ? "mask" : "calc",
+			this.splittedWords
+				.map(
+					(word) =>
+						`${word.width.toFixed(3)},${word.height.toFixed(3)},${word.padding.toFixed(3)},${word.startTime},${word.endTime},${this.getRubyCharCount(word)}`,
+				)
+				.join("|"),
+		].join(";");
 	}
 
 	private generateCalcBasedMaskImage() {
@@ -825,6 +845,12 @@ export class LyricLineEl extends LyricLineBase {
 				this.splittedWords.reduce((pv, w) => Math.max(w.endTime, pv), 0),
 				this.lyricLine.endTime,
 			) - this.lyricLine.startTime;
+		const widthPrefixSums = [0];
+		for (const word of this.splittedWords) {
+			widthPrefixSums.push(
+				widthPrefixSums[widthPrefixSums.length - 1] + word.width,
+			);
+		}
 		this.splittedWords.forEach((word, i) => {
 			const wordEl = word.mainElement;
 			if (wordEl) {
@@ -847,8 +873,7 @@ export class LyricLineEl extends LyricLineBase {
 				// 为了尽可能将渐变动画在相连的每个单词间近似衔接起来
 				// 要综合每个单词的效果时间和间隙生成动画帧数组
 				const widthBeforeSelf =
-					this.splittedWords.slice(0, i).reduce((a, b) => a + b.width, 0) +
-					(this.splittedWords[0] ? fadeWidth : 0);
+					widthPrefixSums[i] + (this.splittedWords[0] ? fadeWidth : 0);
 				const minOffset = -(word.width + word.padding * 2 + fadeWidth);
 				const clampOffset = (x: number) => Math.max(minOffset, Math.min(0, x));
 				let curPos = -widthBeforeSelf - word.width - word.padding - fadeWidth;
@@ -1164,6 +1189,7 @@ export class LyricLineEl extends LyricLineBase {
 		return !(t > pb + h + ov || b < -h - ov);
 	}
 	private disposeElements() {
+		this.lastMaskLayoutKey = "";
 		this.lineBreaker.reset();
 		for (const realWord of this.splittedWords) {
 			for (const a of realWord.elementAnimations) {

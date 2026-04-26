@@ -177,7 +177,7 @@
 	}
 }
 
-.lyricManualLine > span {
+.lyricManualLine {
 	display: block;
 	white-space: nowrap;
 }

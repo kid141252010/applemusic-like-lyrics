@@ -102,6 +102,11 @@ export abstract class LyricPlayerBase
 	private onPageHide = () => {
 		this.isPageVisible = false;
 	};
+	private pendingResizeRelayout = false;
+	private pendingResizeStyleRebuild = false;
+	private resizeObserverFrame:
+		| ReturnType<typeof requestAnimationFrame>
+		| undefined;
 	private scrolledHandler: ReturnType<typeof setTimeout> | undefined;
 	protected isScrolled = false;
 	/** @internal */
@@ -148,12 +153,7 @@ export abstract class LyricPlayerBase
 				}
 			}
 		}
-		if (shouldRelayout) {
-			this.calcLayout(true);
-		}
-		if (shouldRebuildPlayerStyle) {
-			this.onResize();
-		}
+		this.scheduleResizeObserverFlush(shouldRelayout, shouldRebuildPlayerStyle);
 	}) as ResizeObserverCallback);
 	protected wordFadeWidth = 0.5;
 	protected targetAlignIndex = 0;
@@ -317,6 +317,35 @@ export abstract class LyricPlayerBase
 			},
 			{ passive: false },
 		);
+	}
+
+	private scheduleResizeObserverFlush(
+		shouldRelayout: boolean,
+		shouldRebuildPlayerStyle: boolean,
+	): void {
+		this.pendingResizeRelayout ||= shouldRelayout;
+		this.pendingResizeStyleRebuild ||= shouldRebuildPlayerStyle;
+		if (
+			this.resizeObserverFrame !== undefined ||
+			(!this.pendingResizeRelayout && !this.pendingResizeStyleRebuild)
+		) {
+			return;
+		}
+
+		this.resizeObserverFrame = requestAnimationFrame(() => {
+			this.resizeObserverFrame = undefined;
+			const relayout = this.pendingResizeRelayout;
+			const rebuildPlayerStyle = this.pendingResizeStyleRebuild;
+			this.pendingResizeRelayout = false;
+			this.pendingResizeStyleRebuild = false;
+
+			if (relayout) {
+				this.calcLayout(true);
+			}
+			if (rebuildPlayerStyle) {
+				this.onResize();
+			}
+		});
 	}
 
 	private beginScrollHandler() {
@@ -1184,6 +1213,10 @@ export abstract class LyricPlayerBase
 		return this.element;
 	}
 	dispose(): void {
+		if (this.resizeObserverFrame !== undefined) {
+			cancelAnimationFrame(this.resizeObserverFrame);
+			this.resizeObserverFrame = undefined;
+		}
 		this.element.remove();
 		window.removeEventListener("pageshow", this.onPageShow);
 		window.removeEventListener("pagehide", this.onPageHide);
