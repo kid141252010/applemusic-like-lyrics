@@ -2,7 +2,6 @@ import bezier from "bezier-easing";
 import type { LyricLine, LyricWord } from "../../interfaces.ts";
 import styles from "../../styles/lyric-player.module.css";
 import { isCJK } from "../../utils/is-cjk.ts";
-import { LineBalancer } from "../../utils/line-balancer.ts";
 import { chunkAndSplitLyricWords } from "../../utils/lyric-split-words.ts";
 import {
 	createMatrix4,
@@ -12,6 +11,7 @@ import {
 import { LyricLineBase } from "../base.ts";
 import { LyricLineRenderMode } from "../index.ts";
 import type { DomLyricPlayer } from ".";
+import { ManualLineBreaker } from "./manual-line-breaker.ts";
 
 interface RealWord extends LyricWord {
 	mainElement: HTMLSpanElement;
@@ -79,6 +79,9 @@ type MouseEventListener = (
 export class LyricLineEl extends LyricLineBase {
 	private element: HTMLElement = document.createElement("div");
 	private splittedWords: RealWord[] = [];
+
+	private lineBreaker: ManualLineBreaker;
+
 	// 标记是否已经构建了行内的实际 DOM（单词与动画等）
 	private built = false;
 
@@ -93,10 +96,11 @@ export class LyricLineEl extends LyricLineBase {
 	private targetBrightAlpha = 1.0;
 	private targetDarkAlpha = 0.2;
 
-	/**
-	 * 用于平衡换行、尽量减少各行长度差异的类
-	 */
-	private balancer?: LineBalancer;
+	// Unicode 标准的 Grapheme Cluster 分割器
+	// 用于正确处理 emoji、复合字符等
+	private segmenter = new Intl.Segmenter(undefined, {
+		granularity: "grapheme",
+	});
 
 	constructor(
 		private lyricPlayer: DomLyricPlayer,
@@ -111,6 +115,9 @@ export class LyricLineEl extends LyricLineBase {
 		},
 	) {
 		super();
+		this.lineBreaker = new ManualLineBreaker(() =>
+			this.lyricPlayer.getManualLineBreakConfig(),
+		);
 		this._prevParentEl = lyricPlayer.getElement();
 		lyricPlayer.resizeObserver.observe(this.element);
 		this.element.setAttribute("class", styles.lyricLine);
@@ -130,9 +137,6 @@ export class LyricLineEl extends LyricLineBase {
 		main.setAttribute("class", styles.lyricMainLine);
 		trans.setAttribute("class", styles.lyricSubLine);
 		roman.setAttribute("class", styles.lyricSubLine);
-		if (LyricLineBase.wordSegmenter) {
-			this.balancer = new LineBalancer(main);
-		}
 		// 延迟构建具体行内容，进入可视区（含 overscan）时再构建
 		this.rebuildStyle();
 	}
@@ -403,9 +407,11 @@ export class LyricLineEl extends LyricLineBase {
 		const roman = this.element.children[2] as HTMLDivElement;
 		// 非动态歌词，直接渲染整行与副行
 		if (this.lyricPlayer._getIsNonDynamic()) {
-			main.innerText = this.lyricLine.words
+			const text = this.lyricLine.words
 				.map((w) => this.lyricPlayer.processObsceneWord(w))
 				.join("");
+			this.lineBreaker.appendPlainTextTokens(main, text);
+			this.lineBreaker.apply(main);
 			this.setSubLinesText(trans, roman);
 			return;
 		}
@@ -423,6 +429,7 @@ export class LyricLineEl extends LyricLineBase {
 			this.buildWord(chunk, main, hasRubyLine, hasRomanLine);
 		}
 
+		this.lineBreaker.apply(main);
 		this.setSubLinesText(trans, roman);
 	}
 
@@ -479,24 +486,11 @@ export class LyricLineEl extends LyricLineBase {
 
 		if (shouldEmphasize) {
 			mainWordEl.classList.add(styles.emphasize);
-			const trimmedWord = displayWord.trim();
-
-			if (LyricLineBase.graphemeSegmenter) {
-				for (const { segment } of LyricLineBase.graphemeSegmenter.segment(
-					trimmedWord,
-				)) {
-					const charEl = document.createElement("span");
-					charEl.innerText = segment;
-					subElements.push(charEl);
-					wordContainer.appendChild(charEl);
-				}
-			} else {
-				for (const segment of Array.from(trimmedWord)) {
-					const charEl = document.createElement("span");
-					charEl.innerText = segment;
-					subElements.push(charEl);
-					wordContainer.appendChild(charEl);
-				}
+			for (const { segment } of this.segmenter.segment(displayWord.trim())) {
+				const charEl = document.createElement("span");
+				charEl.innerText = segment;
+				subElements.push(charEl);
+				wordContainer.appendChild(charEl);
 			}
 		} else {
 			if (hasRomanLine) {
@@ -542,7 +536,9 @@ export class LyricLineEl extends LyricLineBase {
 		const isPureSpace = chunk.every((w) => !w.word.trim());
 		if (isPureSpace) {
 			const textContent = chunk.map((w) => w.word).join("");
-			main.appendChild(document.createTextNode(textContent));
+			const textNode = document.createTextNode(textContent);
+			main.appendChild(textNode);
+			this.lineBreaker.pushToken(textNode, textContent);
 			return;
 		}
 
@@ -608,6 +604,7 @@ export class LyricLineEl extends LyricLineBase {
 		}
 
 		main.appendChild(wrapperWordEl);
+		this.lineBreaker.pushToken(wrapperWordEl, merged.word);
 	}
 
 	private initFloatAnimation(word: LyricWord, wordEl: HTMLSpanElement) {
@@ -758,6 +755,8 @@ export class LyricLineEl extends LyricLineBase {
 	}
 
 	override onLineSizeChange(_size: [number, number]): void {
+		const main = this.element.children[0] as HTMLDivElement;
+		if (main) this.lineBreaker.maybeReflow(main);
 		this.updateMaskImageSync();
 	}
 	updateMaskImageSync(): void {
@@ -772,13 +771,6 @@ export class LyricLineEl extends LyricLineBase {
 				word.height = 0;
 				word.padding = 0;
 			}
-		}
-		if (this.balancer && LyricLineBase.wordSegmenter) {
-			this.balancer.balanceLineBreaks(
-				this.lyricPlayer._getIsNonDynamic(),
-				this.splittedWords.length > 0,
-				LyricLineBase.wordSegmenter,
-			);
 		}
 		if (this.lyricPlayer.supportMaskImage) {
 			this.generateWebAnimationBasedMaskImage();
@@ -1172,7 +1164,7 @@ export class LyricLineEl extends LyricLineBase {
 		return !(t > pb + h + ov || b < -h - ov);
 	}
 	private disposeElements() {
-		this.balancer?.reset();
+		this.lineBreaker.reset();
 		for (const realWord of this.splittedWords) {
 			for (const a of realWord.elementAnimations) {
 				a.cancel();
@@ -1195,7 +1187,10 @@ export class LyricLineEl extends LyricLineBase {
 		const main = this.element.children[0] as HTMLDivElement;
 		const trans = this.element.children[1] as HTMLDivElement;
 		const roman = this.element.children[2] as HTMLDivElement;
-		if (main) main.innerHTML = "";
+		if (main) {
+			this.lineBreaker.clear(main);
+			main.innerHTML = "";
+		}
 		if (trans) trans.innerHTML = "";
 		if (roman) roman.innerHTML = "";
 	}
