@@ -1,4 +1,4 @@
-import { type ChildNodeInfo, calcBalancedBreaks } from "./lyric-line-break.ts";
+import { type ChildNodeInfo, calcPackedBreaks } from "./lyric-line-break.ts";
 
 let sharedCanvasCtx: CanvasRenderingContext2D | null = null;
 export function getMeasurementContext(): CanvasRenderingContext2D | null {
@@ -23,9 +23,9 @@ export class LineBalancer {
 	private lastBalancedContainerWidth = -1;
 
 	/**
-	 * 防止误差导致的意外换行
+	 * 防止测量误差导致的意外换行
 	 */
-	private static readonly SAFE_WIDTH_PADDING = 25;
+	private static readonly MEASUREMENT_EPSILON_PX = 2;
 
 	constructor(private mainElement: HTMLDivElement) {}
 
@@ -39,8 +39,9 @@ export class LineBalancer {
 		const computedStyle = getComputedStyle(this.mainElement);
 		const paddingLeft = Number.parseFloat(computedStyle.paddingLeft) || 0;
 		const paddingRight = Number.parseFloat(computedStyle.paddingRight) || 0;
+		const rect = this.mainElement.getBoundingClientRect();
 		const containerWidth =
-			this.mainElement.clientWidth - paddingLeft - paddingRight;
+			rect.width - paddingLeft - paddingRight;
 
 		if (containerWidth <= 0) return;
 
@@ -87,7 +88,7 @@ export class LineBalancer {
 
 			const safeContainerWidth = Math.max(
 				1,
-				containerWidth - LineBalancer.SAFE_WIDTH_PADDING,
+				containerWidth - LineBalancer.MEASUREMENT_EPSILON_PX,
 			);
 
 			if (lineWidth <= safeContainerWidth) {
@@ -105,7 +106,7 @@ export class LineBalancer {
 				}
 			}
 
-			const breaks = calcBalancedBreaks(
+			const breaks = calcPackedBreaks(
 				childInfos,
 				safeContainerWidth,
 				fullText,
