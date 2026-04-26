@@ -35,6 +35,62 @@ describe("calcPackedLineRanges", () => {
 		expect(ranges[0]).toEqual([0, 3]);
 	});
 
+	it("keeps a threshold-hit punctuation break before a later space", () => {
+		const tokens: PackedLineBreakToken[] = [
+			{ width: 40, breakPriority: 0 },
+			{ width: 38, breakPriority: 3 },
+			{ width: 5, breakPriority: 0 },
+			{ width: 5, breakPriority: 2 },
+			{ width: 20, breakPriority: 0 },
+		];
+
+		const ranges = calcPackedLineRanges(tokens, 100, 0);
+
+		expect(ranges[0]).toEqual([0, 1]);
+	});
+
+	it("allows only a small fill window after a short punctuation break", () => {
+		const tokens: PackedLineBreakToken[] = [
+			{ width: 60, breakPriority: 0 },
+			{ width: 5, breakPriority: 3 },
+			{ width: 7, breakPriority: 0 },
+			{ width: 7, breakPriority: 0 },
+			{ width: 7, breakPriority: 2 },
+			{ width: 20, breakPriority: 0 },
+		];
+
+		const ranges = calcPackedLineRanges(tokens, 100, 0);
+
+		expect(ranges[0]).toEqual([0, 2]);
+	});
+
+	it("does not apply the punctuation fill window to spaces", () => {
+		const tokens: PackedLineBreakToken[] = [
+			{ width: 60, breakPriority: 0 },
+			{ width: 5, breakPriority: 2 },
+			{ width: 7, breakPriority: 0 },
+			{ width: 7, breakPriority: 0 },
+			{ width: 20, breakPriority: 0 },
+			{ width: 10, breakPriority: 0 },
+		];
+
+		const ranges = calcPackedLineRanges(tokens, 100, 0);
+
+		expect(ranges[0]).toEqual([0, 1]);
+	});
+
+	it("does not break on punctuation when the rest fits on the line", () => {
+		const tokens: PackedLineBreakToken[] = [
+			{ width: 40, breakPriority: 0 },
+			{ width: 38, breakPriority: 3 },
+			{ width: 5, breakPriority: 0 },
+		];
+
+		const ranges = calcPackedLineRanges(tokens, 100, 0);
+
+		expect(ranges).toEqual([[0, 2]]);
+	});
+
 	it("uses the last fitting punctuation when there is no fitting space", () => {
 		const tokens: PackedLineBreakToken[] = [
 			{ width: 20, breakPriority: 0 },

@@ -1,5 +1,8 @@
 export const MEASUREMENT_EPSILON_PX = 2;
 
+const PUNCTUATION_BREAK_MIN_FILL_RATIO = 0.78;
+const PUNCTUATION_BREAK_EXTRA_FILL_RATIO = 0.08;
+
 export interface PackedLineBreakToken {
 	width: number;
 	/**
@@ -32,6 +35,8 @@ export function calcPackedLineRanges(
 		let rightMostFit = start - 1;
 		let lastFittingSpace = -1;
 		let lastFittingPunctuation = -1;
+		let lastFittingPunctuationWidth = 0;
+		const fittingWidths: number[] = [];
 
 		for (let i = start; i < tokens.length; i++) {
 			const token = tokens[i];
@@ -40,11 +45,13 @@ export function calcPackedLineRanges(
 
 			width = nextWidth;
 			rightMostFit = i;
+			fittingWidths[i] = width;
 
 			if (token.breakPriority === 2) {
 				lastFittingSpace = i;
 			} else if (token.breakPriority >= 3) {
 				lastFittingPunctuation = i;
+				lastFittingPunctuationWidth = width;
 			}
 
 			if (nextWidth > fitWidth) break;
@@ -59,18 +66,51 @@ export function calcPackedLineRanges(
 			break;
 		}
 
+		const punctuationBreakAt = getPunctuationBreakIndex(
+			lastFittingPunctuation,
+			lastFittingPunctuationWidth,
+			rightMostFit,
+			fittingWidths,
+			fitWidth,
+		);
 		const breakAt =
-			lastFittingSpace >= start
-				? lastFittingSpace
-				: lastFittingPunctuation >= start
-					? lastFittingPunctuation
-					: rightMostFit;
+			punctuationBreakAt >= start
+				? punctuationBreakAt
+				: lastFittingSpace >= start
+					? lastFittingSpace
+					: lastFittingPunctuation >= start
+						? lastFittingPunctuation
+						: rightMostFit;
 
 		ranges.push([start, breakAt]);
 		start = breakAt + 1;
 	}
 
 	return ranges;
+}
+
+function getPunctuationBreakIndex(
+	punctuationIndex: number,
+	punctuationWidth: number,
+	rightMostFit: number,
+	fittingWidths: readonly number[],
+	fitWidth: number,
+): number {
+	if (punctuationIndex < 0) return -1;
+	if (punctuationWidth >= fitWidth * PUNCTUATION_BREAK_MIN_FILL_RATIO) {
+		return punctuationIndex;
+	}
+
+	const extraFillLimit =
+		punctuationWidth + fitWidth * PUNCTUATION_BREAK_EXTRA_FILL_RATIO;
+	let limitedBreak = punctuationIndex;
+	for (let i = punctuationIndex + 1; i <= rightMostFit; i++) {
+		const width = fittingWidths[i];
+		if (width === undefined || width > extraFillLimit) break;
+		limitedBreak = i;
+	}
+
+	return limitedBreak > punctuationIndex ? limitedBreak : -1;
 }
 
 export function areLineRangesEqual(
