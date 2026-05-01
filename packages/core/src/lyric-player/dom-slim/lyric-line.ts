@@ -1,5 +1,6 @@
 import bezier from "bezier-easing";
 import type { LyricLine, LyricWord } from "../../interfaces.ts";
+import { NativeMouseEvent } from "../../utils/dom-event.ts";
 import { chunkAndSplitLyricWords } from "../../utils/lyric-split-words.ts";
 import {
 	createMatrix4,
@@ -55,7 +56,7 @@ function generateFadeGradient(
 	];
 }
 
-export class RawLyricLineMouseEvent extends MouseEvent {
+export class RawLyricLineMouseEvent extends NativeMouseEvent {
 	constructor(
 		public readonly line: LyricLineEl,
 		event: MouseEvent,

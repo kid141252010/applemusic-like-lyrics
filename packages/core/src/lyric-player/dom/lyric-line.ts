@@ -1,6 +1,7 @@
 import bezier from "bezier-easing";
 import type { LyricLine, LyricWord } from "../../interfaces.ts";
 import styles from "../../styles/lyric-player.module.css";
+import { NativeMouseEvent } from "../../utils/dom-event.ts";
 import { isCJK } from "../../utils/is-cjk.ts";
 import { chunkAndSplitLyricWords } from "../../utils/lyric-split-words.ts";
 import {
@@ -56,7 +57,7 @@ function generateFadeGradient(
 	];
 }
 
-export class RawLyricLineMouseEvent extends MouseEvent {
+export class RawLyricLineMouseEvent extends NativeMouseEvent {
 	constructor(
 		public readonly line: LyricLineBase,
 		event: MouseEvent,

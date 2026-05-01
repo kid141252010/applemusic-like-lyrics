@@ -7,13 +7,14 @@
 import type { LyricLine } from "../../interfaces.ts";
 import "../../styles/index.css";
 import styles from "../../styles/lyric-player.module.css";
+import { NativeMouseEvent } from "../../utils/dom-event.ts";
 import { type LyricLineBase, LyricPlayerBase } from "../base.ts";
 import { LyricLineEl, type RawLyricLineMouseEvent } from "./lyric-line.ts";
 
 /**
  * 歌词行鼠标相关事件，可以获取到歌词行的索引和歌词行元素
  */
-export class LyricLineMouseEvent extends MouseEvent {
+export class LyricLineMouseEvent extends NativeMouseEvent {
 	constructor(
 		/**
 		 * 歌词行索引
