@@ -15,6 +15,17 @@ import { BottomLineEl } from "./bottom-line.ts";
 import { InterludeDots } from "./dom/interlude-dots.ts";
 import { LyricLineRenderMode, MaskObsceneWordsMode } from "./index.ts";
 
+const BG_ABOVE_MAIN_THRESHOLD_MS = 1;
+
+function getFirstTimedWordStartTime(line: LyricLine): number {
+	for (const word of line.words) {
+		if (word.word.trim().length > 0 && Number.isFinite(word.startTime)) {
+			return word.startTime;
+		}
+	}
+	return line.startTime;
+}
+
 /**
  * 歌词播放器的基类，已经包含了有关歌词操作和排版的功能，子类需要为其实现对应的显示展示操作
  */
@@ -894,14 +905,50 @@ export abstract class LyricPlayerBase
 		}
 		// 避免一开始就让所有歌词行挤在一起
 		const LINE_HEIGHT_FALLBACK = this.size[1] / 5;
+		const latestIndex = Math.max(...this.bufferedLines);
+		const isLineActive = (lineIndex: number): boolean => {
+			const hasBuffered = this.bufferedLines.has(lineIndex);
+			return (
+				hasBuffered ||
+				(lineIndex >= this.scrollToIndex && lineIndex < latestIndex)
+			);
+		};
+		const getLineHeight = (lineObj: LyricLineBase | undefined): number =>
+			lineObj
+				? (this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK)
+				: 0;
+		const bgAboveMain = new Set<number>();
+		this.currentLyricLineObjects.forEach((lineObj, i, arr) => {
+			const line = lineObj.getLine();
+			const bgLine = arr[i + 1]?.getLine();
+			if (line.isBG || !bgLine?.isBG) return;
+
+			const mainFirstWordStart = getFirstTimedWordStartTime(line);
+			const bgStartTime = getFirstTimedWordStartTime(bgLine);
+			if (mainFirstWordStart - bgStartTime > BG_ABOVE_MAIN_THRESHOLD_MS) {
+				bgAboveMain.add(i + 1);
+			}
+		});
+		const activeBgAboveMain = new Set(
+			[...bgAboveMain].filter(
+				(lineIndex) => !this.isPlaying || isLineActive(lineIndex),
+			),
+		);
 		const scrollOffset = this.currentLyricLineObjects
 			.slice(0, targetAlignIndex)
 			.reduce(
-				(acc, el) =>
-					acc +
-					(el.getLine().isBG && this.isPlaying
-						? 0
-						: (this.lyricLinesSize.get(el)?.[1] ?? LINE_HEIGHT_FALLBACK)),
+				(acc, el, i) => {
+					const line = el.getLine();
+					if (line.isBG) {
+						if (activeBgAboveMain.has(i) || this.isPlaying) return acc;
+						return acc + getLineHeight(el);
+					}
+
+					const bgLineHeight = activeBgAboveMain.has(i + 1)
+						? getLineHeight(this.currentLyricLineObjects[i + 1])
+						: 0;
+					return acc + getLineHeight(el) + bgLineHeight;
+				},
 				0,
 			);
 		this.scrollBoundary[0] = -scrollOffset;
@@ -935,15 +982,14 @@ export abstract class LyricPlayerBase
 			}
 		}
 
-		const latestIndex = Math.max(...this.bufferedLines);
 		let delay = 0;
 		let baseDelay = sync ? 0 : 0.05;
 		let setDots = false;
 		this.currentLyricLineObjects.forEach((lineObj, i) => {
 			const hasBuffered = this.bufferedLines.has(i);
-			const isActive =
-				hasBuffered || (i >= this.scrollToIndex && i < latestIndex);
+			const isActive = isLineActive(i);
 			const line = lineObj.getLine();
+			const lineHeight = getLineHeight(lineObj);
 
 			const shouldShowDots = interlude && i === interlude[2] + 1;
 
@@ -1005,8 +1051,18 @@ export abstract class LyricPlayerBase
 				? LyricLineRenderMode.GRADIENT
 				: LyricLineRenderMode.SOLID;
 
+			let linePos = curPos;
+			if (line.isBG && activeBgAboveMain.has(i)) {
+				linePos =
+					curPos -
+					getLineHeight(this.currentLyricLineObjects[i - 1]) -
+					lineHeight;
+			} else if (!line.isBG && activeBgAboveMain.has(i + 1)) {
+				linePos += getLineHeight(this.currentLyricLineObjects[i + 1]);
+			}
+
 			lineObj.setTransform(
-				curPos,
+				linePos,
 				targetScale,
 				targetOpacity,
 				blurLevel,
@@ -1015,10 +1071,15 @@ export abstract class LyricPlayerBase
 				renderMode,
 			);
 
-			if (line.isBG && (isActive || !this.isPlaying)) {
-				curPos += this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK;
-			} else if (!line.isBG) {
-				curPos += this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK;
+			if (line.isBG) {
+				if (!activeBgAboveMain.has(i) && (isActive || !this.isPlaying)) {
+					curPos += lineHeight;
+				}
+			} else {
+				curPos += lineHeight;
+				if (activeBgAboveMain.has(i + 1)) {
+					curPos += getLineHeight(this.currentLyricLineObjects[i + 1]);
+				}
 			}
 			if (curPos >= 0 && !this.isSeeking) {
 				if (!line.isBG) delay += baseDelay;
