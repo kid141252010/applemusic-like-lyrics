@@ -984,7 +984,7 @@ export abstract class LyricPlayerBase
 			lineObj
 				? (this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK)
 				: 0;
-		const bgAboveMain = new Set<number>();
+		const bgAboveMainByTiming = new Set<number>();
 		this.currentLyricLineObjects.forEach((lineObj, i, arr) => {
 			const line = lineObj.getLine();
 			const bgLine = arr[i + 1]?.getLine();
@@ -993,14 +993,30 @@ export abstract class LyricPlayerBase
 			const mainFirstWordStart = getFirstTimedWordStartTime(line);
 			const bgStartTime = getFirstTimedWordStartTime(bgLine);
 			if (mainFirstWordStart - bgStartTime > BG_ABOVE_MAIN_THRESHOLD_MS) {
-				bgAboveMain.add(i + 1);
+				bgAboveMainByTiming.add(i + 1);
 			}
 		});
-		const activeBgAboveMain = new Set(
-			[...bgAboveMain].filter(
-				(lineIndex) => !this.isPlaying || isLineActive(lineIndex),
-			),
+		const preActivatedBgAboveMain = new Set(
+			[...this.preActivatedBgLines].filter((lineIndex) => {
+				const line = this.processedLines[lineIndex];
+				const mainLine = this.processedLines[lineIndex - 1];
+				return line?.isBG && mainLine && !mainLine.isBG;
+			}),
 		);
+		const activeBgAboveMain = new Set<number>();
+		for (let i = 0; i < this.currentLyricLineObjects.length; i++) {
+			const line = this.processedLines[i];
+			const mainLine = this.processedLines[i - 1];
+			if (!line?.isBG || !mainLine || mainLine.isBG) continue;
+
+			if (
+				preActivatedBgAboveMain.has(i) ||
+				(this.isPlaying && this.hotLines.has(i)) ||
+				(bgAboveMainByTiming.has(i) && (!this.isPlaying || isLineActive(i)))
+			) {
+				activeBgAboveMain.add(i);
+			}
+		}
 		const scrollOffset = this.currentLyricLineObjects
 			.slice(0, targetAlignIndex)
 			.reduce(
@@ -1124,6 +1140,9 @@ export abstract class LyricPlayerBase
 					curPos -
 					getLineHeight(this.currentLyricLineObjects[i - 1]) -
 					lineHeight;
+				if (preActivatedBgAboveMain.has(i) && !this.hotLines.has(i)) {
+					linePos += lineHeight * 0.1;
+				}
 			} else if (!line.isBG && activeBgAboveMain.has(i + 1)) {
 				linePos += getLineHeight(this.currentLyricLineObjects[i + 1]);
 			}

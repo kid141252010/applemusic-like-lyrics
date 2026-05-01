@@ -57,6 +57,7 @@ const { LyricPlayerBase } = await import("../src/lyric-player/index.ts");
 interface TransformRecord {
 	top: number;
 	scale: number;
+	opacity: number;
 }
 
 class TestLineObject {
@@ -75,8 +76,8 @@ class TestLineObject {
 		return this.line;
 	}
 
-	setTransform(top: number, scale: number): void {
-		this.transforms.push({ top, scale });
+	setTransform(top: number, scale: number, opacity = 1): void {
+		this.transforms.push({ top, scale, opacity });
 	}
 
 	preActivate(): void {
@@ -252,7 +253,7 @@ describe("LyricPlayerBase background layout", () => {
 		const mainLine = makeLine({ lineStart: 1000, wordStart: 1000 });
 		const bgLine = makeLine({ isBG: true, lineStart: 1000, wordStart: 1000 });
 		const player = new LayoutTestPlayer();
-		const [, bgObj] = player.setLayoutFixture(
+		const [mainObj, bgObj] = player.setLayoutFixture(
 			[mainLine, bgLine],
 			[
 				[100, 40],
@@ -266,6 +267,32 @@ describe("LyricPlayerBase background layout", () => {
 
 		expect(bgObj.preActivateCount).toBe(1);
 		expect(bgObj.enableCount).toBe(0);
+		expect(mainObj.lastTransform.top).toBe(20);
+		expect(bgObj.lastTransform.top).toBe(2);
 		expect(bgObj.lastTransform.scale).toBe(100);
+	});
+
+	it("moves a pre-activated background line from its warmup position to the final above-main position when activated", async () => {
+		const mainLine = makeLine({ lineStart: 1000, wordStart: 1000 });
+		const bgLine = makeLine({ isBG: true, lineStart: 1000, wordStart: 1000 });
+		const player = new LayoutTestPlayer();
+		const [mainObj, bgObj] = player.setLayoutFixture(
+			[mainLine, bgLine],
+			[
+				[100, 40],
+				[80, 20],
+			],
+			[],
+			true,
+		);
+
+		player.setCurrentTime(250);
+		expect(bgObj.lastTransform.top).toBe(2);
+
+		player.setCurrentTime(1000);
+
+		expect(bgObj.enableCount).toBeGreaterThan(0);
+		expect(mainObj.lastTransform.top).toBe(20);
+		expect(bgObj.lastTransform.top).toBe(0);
 	});
 });

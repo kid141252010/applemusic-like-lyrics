@@ -201,7 +201,6 @@ export class LyricLineEl extends LyricLineBase {
 	override preActivate(): void {
 		if (!this.lyricLine.isBG || this.isPreActivated || this.isEnabled) return;
 		this.isPreActivated = true;
-		this.element.classList.add(styles.active);
 	}
 	override dePreActivate(): void {
 		this.isPreActivated = false;
