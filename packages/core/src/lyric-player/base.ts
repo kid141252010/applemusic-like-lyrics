@@ -74,7 +74,7 @@ export abstract class LyricPlayerBase
 	protected optimizeOptions: OptimizeLyricOptions = {};
 
 	protected initialLayoutFinished = false;
-	protected static readonly BG_PRE_ACTIVATE_MS = 750;
+	protected static readonly BG_PRE_ACTIVATE_MS = 380;
 
 	/**
 	 * 标记用户是否正在进行滚动交互
@@ -858,10 +858,13 @@ export abstract class LyricPlayerBase
 			}
 
 			nextPreActivatedBgLines.add(id + 1);
+			const visible = timeUntilStart <= LyricPlayerBase.BG_PRE_ACTIVATE_MS / 2;
 			if (!this.preActivatedBgLines.has(id + 1)) {
 				this.preActivatedBgLines.add(id + 1);
-				bgLineObj.preActivate();
+				bgLineObj.preActivate(visible);
 				changed = true;
+			} else {
+				bgLineObj.preActivate(visible);
 			}
 		});
 
@@ -1379,7 +1382,7 @@ export abstract class LyricLineBase extends EventTarget implements Disposable {
 			: null;
 
 	abstract getLine(): LyricLine;
-	preActivate(): void {}
+	preActivate(_visible = false): void {}
 	dePreActivate(): void {}
 	abstract enable(time?: number, shouldPlay?: boolean): void;
 	abstract disable(): void;

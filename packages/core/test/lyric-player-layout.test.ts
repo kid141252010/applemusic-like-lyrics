@@ -65,6 +65,7 @@ class TestLineObject {
 	preActivateCount = 0;
 	dePreActivateCount = 0;
 	enableCount = 0;
+	isPreActivatedVisible = false;
 	lineTransforms = {
 		posY: { updateParams() {} },
 		scale: { updateParams() {} },
@@ -80,11 +81,13 @@ class TestLineObject {
 		this.transforms.push({ top, scale, opacity });
 	}
 
-	preActivate(): void {
+	preActivate(visible = false): void {
 		this.preActivateCount++;
+		this.isPreActivatedVisible = visible;
 	}
 	dePreActivate(): void {
 		this.dePreActivateCount++;
+		this.isPreActivatedVisible = false;
 	}
 	enable(): void {
 		this.enableCount++;
@@ -263,13 +266,23 @@ describe("LyricPlayerBase background layout", () => {
 			true,
 		);
 
-		player.setCurrentTime(250);
+		player.setCurrentTime(619);
+
+		expect(bgObj.preActivateCount).toBe(0);
+		expect(bgObj.enableCount).toBe(0);
+
+		player.setCurrentTime(620);
 
 		expect(bgObj.preActivateCount).toBe(1);
 		expect(bgObj.enableCount).toBe(0);
+		expect(bgObj.isPreActivatedVisible).toBe(false);
 		expect(mainObj.lastTransform.top).toBe(20);
 		expect(bgObj.lastTransform.top).toBe(2);
 		expect(bgObj.lastTransform.scale).toBe(100);
+
+		player.setCurrentTime(810);
+
+		expect(bgObj.isPreActivatedVisible).toBe(true);
 	});
 
 	it("moves a pre-activated background line from its warmup position to the final above-main position when activated", async () => {
@@ -286,7 +299,7 @@ describe("LyricPlayerBase background layout", () => {
 			true,
 		);
 
-		player.setCurrentTime(250);
+		player.setCurrentTime(620);
 		expect(bgObj.lastTransform.top).toBe(2);
 
 		player.setCurrentTime(1000);
