@@ -186,10 +186,23 @@ export class LyricLineEl extends LyricLineBase {
 	}
 
 	private isEnabled = false;
+	private isPreActivated = false;
+	override preActivate(): void {
+		if (!this.lyricLine.isBG || this.isPreActivated || this.isEnabled) return;
+		this.isPreActivated = true;
+		this.element.classList.add(styles.active);
+	}
+	override dePreActivate(): void {
+		this.isPreActivated = false;
+		if (!this.isEnabled) {
+			this.element.classList.remove(styles.active);
+		}
+	}
 	async enable(
 		maskAnimationTime: number = this.lyricLine.startTime,
 	): Promise<void> {
 		this.isEnabled = true;
+		this.isPreActivated = false;
 		this.element.classList.add(styles.active);
 		await this.waitMaskImageUpdated();
 		const main = this.element.children[0] as HTMLDivElement;
@@ -212,6 +225,7 @@ export class LyricLineEl extends LyricLineBase {
 	}
 	disable(): void {
 		this.isEnabled = false;
+		this.isPreActivated = false;
 		this.element.classList.remove(styles.active);
 		const main = this.element.children[0] as HTMLDivElement;
 		for (const word of this.splittedWords) {

@@ -47,6 +47,7 @@ export abstract class LyricPlayerBase
 	protected lyricLinesIndexes: WeakMap<LyricLineBase, number> = new WeakMap();
 	protected hotLines: Set<number> = new Set();
 	protected bufferedLines: Set<number> = new Set();
+	protected preActivatedBgLines: Set<number> = new Set();
 	protected isNonDynamic = false;
 	protected hasDuetLine = false;
 	protected scrollToIndex = 0;
@@ -73,6 +74,7 @@ export abstract class LyricPlayerBase
 	protected optimizeOptions: OptimizeLyricOptions = {};
 
 	protected initialLayoutFinished = false;
+	protected static readonly BG_PRE_ACTIVATE_MS = 750;
 
 	/**
 	 * 标记用户是否正在进行滚动交互
@@ -627,6 +629,7 @@ export abstract class LyricPlayerBase
 		this.interludeDots.setInterlude(undefined);
 		this.hotLines.clear();
 		this.bufferedLines.clear();
+		this.clearPreActivatedBgLines();
 		this.setCurrentTime(0, true);
 
 		if (import.meta.env.DEV) {
@@ -667,6 +670,12 @@ export abstract class LyricPlayerBase
 		const removedHotIds = new Set<number>();
 		const removedIds = new Set<number>();
 		const addedIds = new Set<number>();
+		let preActivatedBgLinesChanged = false;
+		let didCalcLayout = false;
+		const relayout = () => {
+			didCalcLayout = true;
+			this.calcLayout();
+		};
 
 		// 先检索当前已经超出时间范围的缓冲行，列入待删除集内
 		for (const lastHotId of this.hotLines) {
@@ -730,6 +739,7 @@ export abstract class LyricPlayerBase
 				}
 			}
 		});
+		preActivatedBgLinesChanged = this.syncPreActivatedBgLines(time, isSeek);
 		for (const v of this.bufferedLines) {
 			if (!this.hotLines.has(v)) {
 				removedIds.add(v);
@@ -754,7 +764,7 @@ export abstract class LyricPlayerBase
 			}
 
 			this.resetScroll();
-			this.calcLayout();
+			relayout();
 		} else if (removedIds.size > 0 || addedIds.size > 0) {
 			if (removedIds.size === 0 && addedIds.size > 0) {
 				for (const v of addedIds) {
@@ -762,7 +772,7 @@ export abstract class LyricPlayerBase
 					this.currentLyricLineObjects[v]?.enable();
 				}
 				this.scrollToIndex = Math.min(...this.bufferedLines);
-				this.calcLayout();
+				relayout();
 			} else if (addedIds.size === 0 && removedIds.size > 0) {
 				if (eqSet(removedIds, this.bufferedLines)) {
 					for (const v of this.bufferedLines) {
@@ -771,7 +781,7 @@ export abstract class LyricPlayerBase
 							this.currentLyricLineObjects[v]?.disable();
 						}
 					}
-					this.calcLayout();
+					relayout();
 				}
 			} else {
 				for (const v of addedIds) {
@@ -784,7 +794,7 @@ export abstract class LyricPlayerBase
 				}
 				if (this.bufferedLines.size > 0)
 					this.scrollToIndex = Math.min(...this.bufferedLines);
-				this.calcLayout();
+				relayout();
 			}
 		}
 
@@ -801,12 +811,69 @@ export abstract class LyricPlayerBase
 
 				if (this.scrollToIndex !== targetIndex) {
 					this.scrollToIndex = targetIndex;
-					this.calcLayout();
+					relayout();
 				}
 			}
 		}
 
+		if (preActivatedBgLinesChanged && !didCalcLayout) {
+			relayout();
+		}
+
 		this.lastCurrentTime = time;
+	}
+
+	private clearPreActivatedBgLines(): boolean {
+		if (this.preActivatedBgLines.size === 0) return false;
+
+		for (const bgId of this.preActivatedBgLines) {
+			this.currentLyricLineObjects[bgId]?.dePreActivate();
+		}
+		this.preActivatedBgLines.clear();
+		return true;
+	}
+
+	private syncPreActivatedBgLines(time: number, isSeek: boolean): boolean {
+		if (isSeek) {
+			return this.clearPreActivatedBgLines();
+		}
+
+		let changed = false;
+		const nextPreActivatedBgLines = new Set<number>();
+
+		this.currentLyricLineObjects.forEach((lineObj, id, arr) => {
+			const line = lineObj.getLine();
+			if (line.isBG) return;
+
+			const bgLineObj = arr[id + 1];
+			const bgLine = bgLineObj?.getLine();
+			if (!bgLine?.isBG || this.hotLines.has(id + 1)) return;
+
+			const timeUntilStart = line.startTime - time;
+			if (
+				timeUntilStart <= 0 ||
+				timeUntilStart > LyricPlayerBase.BG_PRE_ACTIVATE_MS
+			) {
+				return;
+			}
+
+			nextPreActivatedBgLines.add(id + 1);
+			if (!this.preActivatedBgLines.has(id + 1)) {
+				this.preActivatedBgLines.add(id + 1);
+				bgLineObj.preActivate();
+				changed = true;
+			}
+		});
+
+		for (const bgId of [...this.preActivatedBgLines]) {
+			if (this.hotLines.has(bgId) || !nextPreActivatedBgLines.has(bgId)) {
+				this.preActivatedBgLines.delete(bgId);
+				this.currentLyricLineObjects[bgId]?.dePreActivate();
+				changed = true;
+			}
+		}
+
+		return changed;
 	}
 
 	protected updateDynamicSpringParams(): void {
@@ -1041,7 +1108,7 @@ export abstract class LyricPlayerBase
 
 			if (!isActive && this.isPlaying) {
 				if (line.isBG) {
-					targetScale = 75;
+					targetScale = this.preActivatedBgLines.has(i) ? 100 : 75;
 				} else {
 					targetScale = SCALE_ASPECT;
 				}
@@ -1293,6 +1360,8 @@ export abstract class LyricLineBase extends EventTarget implements Disposable {
 			: null;
 
 	abstract getLine(): LyricLine;
+	preActivate(): void {}
+	dePreActivate(): void {}
 	abstract enable(time?: number, shouldPlay?: boolean): void;
 	abstract disable(): void;
 	abstract resume(): void;

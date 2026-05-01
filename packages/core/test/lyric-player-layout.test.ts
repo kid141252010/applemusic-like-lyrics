@@ -4,6 +4,7 @@ import type { LyricLine } from "../src/interfaces.ts";
 class MockElement {
 	children: MockElement[] = [];
 	className = "";
+	innerHTML = "";
 	dataset: Record<string, string> = {};
 	style = {
 		setProperty() {},
@@ -60,6 +61,9 @@ interface TransformRecord {
 
 class TestLineObject {
 	readonly transforms: TransformRecord[] = [];
+	preActivateCount = 0;
+	dePreActivateCount = 0;
+	enableCount = 0;
 	lineTransforms = {
 		posY: { updateParams() {} },
 		scale: { updateParams() {} },
@@ -75,8 +79,18 @@ class TestLineObject {
 		this.transforms.push({ top, scale });
 	}
 
-	enable(): void {}
-	disable(): void {}
+	preActivate(): void {
+		this.preActivateCount++;
+	}
+	dePreActivate(): void {
+		this.dePreActivateCount++;
+	}
+	enable(): void {
+		this.enableCount++;
+	}
+	disable(): void {
+		this.dePreActivate();
+	}
 	resume(): void {}
 	pause(): void {}
 	update(): void {}
@@ -110,6 +124,7 @@ class LayoutTestPlayer extends LyricPlayerBase {
 		this.lastInterludeState = false;
 		this.isPlaying = isPlaying;
 		this.processedLines = lines;
+		this.initialLayoutFinished = true;
 		this.bufferedLines = new Set(bufferedLines);
 		this.hotLines = new Set(bufferedLines);
 
@@ -231,5 +246,26 @@ describe("LyricPlayerBase background layout", () => {
 		expect(mainObj.lastTransform.top).toBe(0);
 		expect(bgObj.lastTransform.top).toBe(40);
 		expect(bgObj.lastTransform.scale).toBe(75);
+	});
+
+	it("pre-activates the next background line during the warmup window without enabling it", async () => {
+		const mainLine = makeLine({ lineStart: 1000, wordStart: 1000 });
+		const bgLine = makeLine({ isBG: true, lineStart: 1000, wordStart: 1000 });
+		const player = new LayoutTestPlayer();
+		const [, bgObj] = player.setLayoutFixture(
+			[mainLine, bgLine],
+			[
+				[100, 40],
+				[80, 20],
+			],
+			[],
+			true,
+		);
+
+		player.setCurrentTime(250);
+
+		expect(bgObj.preActivateCount).toBe(1);
+		expect(bgObj.enableCount).toBe(0);
+		expect(bgObj.lastTransform.scale).toBe(100);
 	});
 });
