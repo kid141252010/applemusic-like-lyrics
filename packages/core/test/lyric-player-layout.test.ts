@@ -254,7 +254,7 @@ describe("LyricPlayerBase background layout", () => {
 
 	it("pre-activates the next background line during the warmup window without enabling it", async () => {
 		const mainLine = makeLine({ lineStart: 1000, wordStart: 1000 });
-		const bgLine = makeLine({ isBG: true, lineStart: 1000, wordStart: 1000 });
+		const bgLine = makeLine({ isBG: true, lineStart: 1000, wordStart: 998 });
 		const player = new LayoutTestPlayer();
 		const [mainObj, bgObj] = player.setLayoutFixture(
 			[mainLine, bgLine],
@@ -266,12 +266,12 @@ describe("LyricPlayerBase background layout", () => {
 			true,
 		);
 
-		player.setCurrentTime(619);
+		player.setCurrentTime(699);
 
 		expect(bgObj.preActivateCount).toBe(0);
 		expect(bgObj.enableCount).toBe(0);
 
-		player.setCurrentTime(620);
+		player.setCurrentTime(700);
 
 		expect(bgObj.preActivateCount).toBe(1);
 		expect(bgObj.enableCount).toBe(0);
@@ -280,14 +280,14 @@ describe("LyricPlayerBase background layout", () => {
 		expect(bgObj.lastTransform.top).toBe(2);
 		expect(bgObj.lastTransform.scale).toBe(100);
 
-		player.setCurrentTime(810);
+		player.setCurrentTime(850);
 
 		expect(bgObj.isPreActivatedVisible).toBe(true);
 	});
 
-	it("moves a pre-activated background line from its warmup position to the final above-main position when activated", async () => {
+	it("does not pre-activate background vocals that are not early enough", async () => {
 		const mainLine = makeLine({ lineStart: 1000, wordStart: 1000 });
-		const bgLine = makeLine({ isBG: true, lineStart: 1000, wordStart: 1000 });
+		const bgLine = makeLine({ isBG: true, lineStart: 1000, wordStart: 999 });
 		const player = new LayoutTestPlayer();
 		const [mainObj, bgObj] = player.setLayoutFixture(
 			[mainLine, bgLine],
@@ -299,7 +299,37 @@ describe("LyricPlayerBase background layout", () => {
 			true,
 		);
 
-		player.setCurrentTime(620);
+		player.setCurrentTime(700);
+
+		expect(bgObj.preActivateCount).toBe(0);
+		expect(bgObj.enableCount).toBe(0);
+		await player.layout();
+		expect(mainObj.lastTransform.top).toBe(0);
+		expect(bgObj.lastTransform.top).toBe(40);
+		expect(bgObj.lastTransform.scale).toBe(75);
+
+		player.setCurrentTime(1000);
+
+		expect(bgObj.enableCount).toBeGreaterThan(0);
+		expect(mainObj.lastTransform.top).toBe(0);
+		expect(bgObj.lastTransform.top).toBe(40);
+	});
+
+	it("moves a pre-activated background line from its warmup position to the final above-main position when activated", async () => {
+		const mainLine = makeLine({ lineStart: 1000, wordStart: 1000 });
+		const bgLine = makeLine({ isBG: true, lineStart: 1000, wordStart: 998 });
+		const player = new LayoutTestPlayer();
+		const [mainObj, bgObj] = player.setLayoutFixture(
+			[mainLine, bgLine],
+			[
+				[100, 40],
+				[80, 20],
+			],
+			[],
+			true,
+		);
+
+		player.setCurrentTime(700);
 		expect(bgObj.lastTransform.top).toBe(2);
 
 		player.setCurrentTime(1000);

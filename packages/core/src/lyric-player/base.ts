@@ -26,6 +26,17 @@ function getFirstTimedWordStartTime(line: LyricLine): number {
 	return line.startTime;
 }
 
+function isPrepositionedBackgroundLine(
+	mainLine: LyricLine,
+	bgLine: LyricLine,
+): boolean {
+	return (
+		getFirstTimedWordStartTime(mainLine) -
+			getFirstTimedWordStartTime(bgLine) >
+		BG_ABOVE_MAIN_THRESHOLD_MS
+	);
+}
+
 /**
  * 歌词播放器的基类，已经包含了有关歌词操作和排版的功能，子类需要为其实现对应的显示展示操作
  */
@@ -74,7 +85,7 @@ export abstract class LyricPlayerBase
 	protected optimizeOptions: OptimizeLyricOptions = {};
 
 	protected initialLayoutFinished = false;
-	protected static readonly BG_PRE_ACTIVATE_MS = 380;
+	protected static readonly BG_PRE_ACTIVATE_MS = 300;
 
 	/**
 	 * 标记用户是否正在进行滚动交互
@@ -848,6 +859,7 @@ export abstract class LyricPlayerBase
 			const bgLineObj = arr[id + 1];
 			const bgLine = bgLineObj?.getLine();
 			if (!bgLine?.isBG || this.hotLines.has(id + 1)) return;
+			if (!isPrepositionedBackgroundLine(line, bgLine)) return;
 
 			const timeUntilStart = line.startTime - time;
 			if (
@@ -993,9 +1005,7 @@ export abstract class LyricPlayerBase
 			const bgLine = arr[i + 1]?.getLine();
 			if (line.isBG || !bgLine?.isBG) return;
 
-			const mainFirstWordStart = getFirstTimedWordStartTime(line);
-			const bgStartTime = getFirstTimedWordStartTime(bgLine);
-			if (mainFirstWordStart - bgStartTime > BG_ABOVE_MAIN_THRESHOLD_MS) {
+			if (isPrepositionedBackgroundLine(line, bgLine)) {
 				bgAboveMainByTiming.add(i + 1);
 			}
 		});
@@ -1003,7 +1013,12 @@ export abstract class LyricPlayerBase
 			[...this.preActivatedBgLines].filter((lineIndex) => {
 				const line = this.processedLines[lineIndex];
 				const mainLine = this.processedLines[lineIndex - 1];
-				return line?.isBG && mainLine && !mainLine.isBG;
+				return (
+					line?.isBG &&
+					mainLine &&
+					!mainLine.isBG &&
+					isPrepositionedBackgroundLine(mainLine, line)
+				);
 			}),
 		);
 		const activeBgAboveMain = new Set<number>();
@@ -1013,9 +1028,11 @@ export abstract class LyricPlayerBase
 			if (!line?.isBG || !mainLine || mainLine.isBG) continue;
 
 			if (
-				preActivatedBgAboveMain.has(i) ||
-				(this.isPlaying && this.hotLines.has(i)) ||
-				(bgAboveMainByTiming.has(i) && (!this.isPlaying || isLineActive(i)))
+				bgAboveMainByTiming.has(i) &&
+				(preActivatedBgAboveMain.has(i) ||
+					(this.isPlaying && this.hotLines.has(i)) ||
+					!this.isPlaying ||
+					isLineActive(i))
 			) {
 				activeBgAboveMain.add(i);
 			}
