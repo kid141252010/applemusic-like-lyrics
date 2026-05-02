@@ -85,7 +85,8 @@ export abstract class LyricPlayerBase
 	protected optimizeOptions: OptimizeLyricOptions = {};
 
 	protected initialLayoutFinished = false;
-	protected static readonly BG_PRE_ACTIVATE_MS = 300;
+	protected static readonly BG_PRE_ACTIVATE_MS = 188;
+	protected static readonly BG_PRE_ACTIVATE_VISIBLE_DELAY_MS = 122;
 
 	/**
 	 * 标记用户是否正在进行滚动交互
@@ -870,7 +871,10 @@ export abstract class LyricPlayerBase
 			}
 
 			nextPreActivatedBgLines.add(id + 1);
-			const visible = timeUntilStart <= LyricPlayerBase.BG_PRE_ACTIVATE_MS / 2;
+			const visible =
+				timeUntilStart <=
+				LyricPlayerBase.BG_PRE_ACTIVATE_MS -
+					LyricPlayerBase.BG_PRE_ACTIVATE_VISIBLE_DELAY_MS;
 			if (!this.preActivatedBgLines.has(id + 1)) {
 				this.preActivatedBgLines.add(id + 1);
 				bgLineObj.preActivate(visible);
@@ -1160,9 +1164,6 @@ export abstract class LyricPlayerBase
 					curPos -
 					getLineHeight(this.currentLyricLineObjects[i - 1]) -
 					lineHeight;
-				if (preActivatedBgAboveMain.has(i) && !this.hotLines.has(i)) {
-					linePos += lineHeight * 0.1;
-				}
 			} else if (!line.isBG && activeBgAboveMain.has(i + 1)) {
 				linePos += getLineHeight(this.currentLyricLineObjects[i + 1]);
 			}

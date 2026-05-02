@@ -266,21 +266,25 @@ describe("LyricPlayerBase background layout", () => {
 			true,
 		);
 
-		player.setCurrentTime(699);
+		player.setCurrentTime(811);
 
 		expect(bgObj.preActivateCount).toBe(0);
 		expect(bgObj.enableCount).toBe(0);
 
-		player.setCurrentTime(700);
+		player.setCurrentTime(812);
 
 		expect(bgObj.preActivateCount).toBe(1);
 		expect(bgObj.enableCount).toBe(0);
 		expect(bgObj.isPreActivatedVisible).toBe(false);
 		expect(mainObj.lastTransform.top).toBe(20);
-		expect(bgObj.lastTransform.top).toBe(2);
+		expect(bgObj.lastTransform.top).toBe(0);
 		expect(bgObj.lastTransform.scale).toBe(100);
 
-		player.setCurrentTime(850);
+		player.setCurrentTime(933);
+
+		expect(bgObj.isPreActivatedVisible).toBe(false);
+
+		player.setCurrentTime(934);
 
 		expect(bgObj.isPreActivatedVisible).toBe(true);
 	});
@@ -299,7 +303,7 @@ describe("LyricPlayerBase background layout", () => {
 			true,
 		);
 
-		player.setCurrentTime(700);
+		player.setCurrentTime(812);
 
 		expect(bgObj.preActivateCount).toBe(0);
 		expect(bgObj.enableCount).toBe(0);
@@ -329,8 +333,8 @@ describe("LyricPlayerBase background layout", () => {
 			true,
 		);
 
-		player.setCurrentTime(700);
-		expect(bgObj.lastTransform.top).toBe(2);
+		player.setCurrentTime(812);
+		expect(bgObj.lastTransform.top).toBe(0);
 
 		player.setCurrentTime(1000);
 
