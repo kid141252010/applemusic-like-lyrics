@@ -86,7 +86,7 @@ export abstract class LyricPlayerBase
 
 	protected initialLayoutFinished = false;
 	protected static readonly BG_PRE_ACTIVATE_MS = 188;
-	protected static readonly BG_PRE_ACTIVATE_VISIBLE_DELAY_MS = 122;
+	protected static readonly BG_PRE_ACTIVATE_VISIBLE_DELAY_MS = 160;
 
 	/**
 	 * 标记用户是否正在进行滚动交互

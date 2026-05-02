@@ -280,11 +280,11 @@ describe("LyricPlayerBase background layout", () => {
 		expect(bgObj.lastTransform.top).toBe(0);
 		expect(bgObj.lastTransform.scale).toBe(100);
 
-		player.setCurrentTime(933);
+		player.setCurrentTime(971);
 
 		expect(bgObj.isPreActivatedVisible).toBe(false);
 
-		player.setCurrentTime(934);
+		player.setCurrentTime(972);
 
 		expect(bgObj.isPreActivatedVisible).toBe(true);
 	});
