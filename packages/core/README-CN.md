@@ -8,74 +8,85 @@
 [![npm](https://img.shields.io/npm/dt/%40applemusic-like-lyrics/core)](https://www.npmjs.com/package/@applemusic-like-lyrics/core)
 [![npm](https://img.shields.io/npm/v/%40applemusic-like-lyrics%2Fcore)](https://www.npmjs.com/package/@applemusic-like-lyrics/core)
 
-AMLL 的纯 JS 核心组件框架，包括歌词显示组件和背景组件等其它可以复用的组件。
-
-此处的东西都是 UI 框架无关的，所以可以间接在各种动态页面框架下引用。
-
-或者如果你需要使用组件绑定的话，这里有 [React 绑定版本](../react/README.md) 和 [Vue 绑定版本](../vue/README.md)
-
-## 特性
-
-- 纯前端渲染的歌词展示与背景渲染
-- 动态逐字歌词、翻译与音译显示
-- 支持多行、对唱与背景行
-- 可通过 CSS 变量自定义颜色与部分表现
+AMLL Core 是框架无关的 DOM 组件库，提供歌词播放组件、背景渲染组件和相关类型。React/Vue 绑定都基于本包构建。
 
 ## 安装
 
-安装使用的依赖（如果以下列出的依赖包没有安装的话需要自行安装）：
 ```bash
-npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite # 使用 npm
-yarn add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite # 使用 yarn
+npm install @applemusic-like-lyrics/core @applemusic-like-lyrics/ttml
+npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite
 ```
 
-安装本体框架：
-```bash
-npm install @applemusic-like-lyrics/core # 使用 npm
-yarn add @applemusic-like-lyrics/core # 使用 yarn
-```
+如果使用 pnpm 或 Yarn，将 `npm install` 替换为 `pnpm add` 或 `yarn add`。部分包管理器会自动安装 peer 依赖；如果构建时提示缺少 `@pixi/*`，请显式安装上面的 Pixi 包。
 
-## 使用方式摘要
+## 基本使用
 
-详细的 API 文档请参考 [./docs/modules.md](./docs/modules.md)
-
-一个测试用途的程序可以在 [../playground/core/src/test.ts](../playground/core/src/test.ts) 里找到。
-
-```typescript
+```ts
 import { LyricPlayer } from "@applemusic-like-lyrics/core";
-import "@applemusic-like-lyrics/core/style.css"; // 导入需要的样式
+import { parseTTML } from "@applemusic-like-lyrics/ttml";
+import "@applemusic-like-lyrics/core/style.css";
 
-const player = new LyricPlayer(); // 创建歌词播放组件
-document.body.appendChild(player.getElement()); // 将组件的元素添加到页面
-player.setLyricLines([]) // 设置歌词
-player.setCurrentTime(0) // 设定当前播放时间（需要逐帧调用）
-player.update(0) // 更新歌词组件动画（需要逐帧调用）
+const audio = document.querySelector<HTMLAudioElement>("#audio")!;
+const player = new LyricPlayer();
+
+document.body.appendChild(player.getElement());
+
+const ttmlText = await fetch("/lyrics.ttml").then((res) => res.text());
+player.setLyricLines(parseTTML(ttmlText).lines);
+player.setCurrentTime(0, true);
+player.update(0);
+
+let lastFrameTime = -1;
+
+function frame(time: number) {
+    if (lastFrameTime === -1) lastFrameTime = time;
+    const delta = time - lastFrameTime;
+    lastFrameTime = time;
+
+    if (!audio.paused) {
+        player.setCurrentTime(Math.floor(audio.currentTime * 1000));
+    }
+
+    player.update(delta);
+    requestAnimationFrame(frame);
+}
+
+requestAnimationFrame(frame);
 ```
 
-每次通过 `LyricPlayer.setLyricLines` 设置的歌词是一个 `LyricLine[]` 参数，具体可以参考 [./src/interfaces.ts](./src/interfaces.ts) 中的代码。
+要点：
+
+- `setLyricLines()` 接收 Core 的 `LyricLine[]`，TTML 推荐使用 `@applemusic-like-lyrics/ttml` 的 `parseTTML(ttmlText).lines`。
+- `setCurrentTime()` 的单位是整数毫秒；拖动进度条或点击歌词跳转时，将第二个参数设为 `true`。
+- `update(deltaMs)` 推进动画，应在组件挂载后逐帧调用。
+- 组件不用时调用 `dispose()` 释放资源。
 
 ## 数据结构
 
-歌词的输入结构为 `LyricLine[]`，其中每行包含：
+`LyricLine[]` 中每行包含：
 
-- `words`: 逐字歌词数组，每个单词包含 `startTime` / `endTime` / `word`，并可选包含 `romanWord`、`ruby`、`obscene` 等字段
-- `translatedLyric`: 翻译行文本
-- `romanLyric`: 音译行文本
-- `startTime` / `endTime`: 行级时间戳
-- `isBG` / `isDuet`: 背景行与对唱行标记
+- `words`: 逐词歌词数组，每个单词包含 `startTime`、`endTime`、`word`，并可选包含 `romanWord`、`ruby`、`obscene`
+- `translatedLyric`: 翻译文本
+- `romanLyric`: 音译文本
+- `startTime` / `endTime`: 行级时间戳，单位毫秒
+- `isBG` / `isDuet`: 背景人声与对唱标记
 
-## 样式定制
+## 样式
 
-主要样式由 `@applemusic-like-lyrics/core/style.css` 提供，常用自定义方式为覆写 CSS 变量，例如：
+必须引入 `@applemusic-like-lyrics/core/style.css`。常用自定义方式是覆写 CSS 变量：
 
 ```css
 .amll-lyric-player {
-  --amll-lp-color: #ffffff;
-  --amll-lp-bg-color: rgba(0, 0, 0, 0.35);
+    --amll-lp-color: #ffffff;
+    --amll-lp-bg-color: rgba(0, 0, 0, 0.35);
 }
 ```
 
-## 开发与构建
+## 文档与开发
+
+- 使用指南：https://amll.dev/guides/overview/quickstart
+- API 参考：https://amll.dev/reference/core
+- 调试示例：`packages/playground/core`
 
 ```bash
 bun run --cwd packages/core dev

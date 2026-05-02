@@ -8,42 +8,59 @@
 [![npm](https://img.shields.io/npm/dt/%40applemusic-like-lyrics/react)](https://www.npmjs.com/package/@applemusic-like-lyrics/react)
 [![npm](https://img.shields.io/npm/v/%40applemusic-like-lyrics%2Freact)](https://www.npmjs.com/package/@applemusic-like-lyrics/react)
 
-AMLL 组件库的 React 绑定，你可以通过此库来更加方便地使用 AMLL 歌词组件。
-
-详情可以访问 [Core 核心组件的 README.md](../core/README-CN.md)。
+AMLL Core 的 React 绑定，提供 `LyricPlayer` 和 `BackgroundRender` 组件。
 
 ## 安装
 
-安装使用的依赖（如果以下列出的依赖包没有安装的话需要自行安装）：
 ```bash
-npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite jss jss-preset-default # 使用 npm
-yarn add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite jss jss-preset-default # 使用 yarn
+npm install @applemusic-like-lyrics/react @applemusic-like-lyrics/ttml react react-dom
+npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite
 ```
 
-安装 React 绑定需要使用的依赖（如果以下列出的依赖包没有安装的话需要自行安装）：
-```bash
-npm install react react-dom # 使用 npm
-yarn add react react-dom # 使用 yarn
-```
+如果使用 pnpm 或 Yarn，将 `npm install` 替换为 `pnpm add` 或 `yarn add`。当前包只需要上面列出的 peer 依赖。
 
-安装本体框架：
-```bash
-npm install @applemusic-like-lyrics/react # 使用 npm
-yarn add @applemusic-like-lyrics/react # 使用 yarn
-```
-
-## 使用方式摘要
-
-详细的 API 文档请参考 [./docs/modules.md](./docs/modules.md)
-
-一个测试用途的程序可以在 [../playground/react/src/test.tsx](../playground/react/src/test.tsx) 里找到。
+## 基本使用
 
 ```tsx
+import { useState } from "react";
+import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { LyricPlayer } from "@applemusic-like-lyrics/react";
+import "@applemusic-like-lyrics/core/style.css";
 
-const App = () => {
+export function Lyrics() {
+    const [lyricLines, setLyricLines] = useState<LyricLine[]>([]);
     const [currentTime, setCurrentTime] = useState(0);
-	const [lyricLines, setLyricLines] = useState<LyricLine[]>([]);
-    return <LyricPlayer lyricLines={lyricLines} currentTime={currentTime} />
-};
+    const [playing, setPlaying] = useState(false);
+
+    return (
+        <LyricPlayer
+            lyricLines={lyricLines}
+            currentTime={currentTime}
+            playing={playing}
+            style={{ height: 480 }}
+        />
+    );
+}
 ```
+
+TTML 解析：
+
+```ts
+import { parseTTML } from "@applemusic-like-lyrics/ttml";
+
+const lyricLines = parseTTML(ttmlText).lines;
+```
+
+背景组件：
+
+```tsx
+import { BackgroundRender } from "@applemusic-like-lyrics/react";
+
+<BackgroundRender album="/cover.jpg" playing={playing} />;
+```
+
+## 文档
+
+- 快速入门：https://amll.dev/guides/react/quick-start
+- API 参考：https://amll.dev/reference/react
+- 调试示例：`packages/playground/react`

@@ -9,126 +9,38 @@ import {
     TabItem,
 } from "@astrojs/starlight/components";
 
-This page quickly shows how to integrate AMLL lyric components into your project. AMLL does not provide CDN script usage; a bundler is required.
+AMLL does not ship a CDN build. Use it in a bundler environment such as Vite, Webpack, Rspack, or a Next.js client component. This page covers the minimum rendering-component setup; for lyric parsing and TTML generation, see [Lyric Format Quick Start](/en/guides/lyric/quickstart) and the [API Reference](/en/reference).
 
-For tooling packages outside the rendering component libraries, see [API Reference](/en/reference).
-
-## Dependencies
-
-Install AMLL core library:
-
-<Tabs syncKey="pkg">
-<TabItem label="npm">
-
-```sh
-npm install @applemusic-like-lyrics/core
-```
-
-</TabItem>
-
-<TabItem label="pnpm">
-
-```sh
-pnpm add @applemusic-like-lyrics/core
-```
-
-</TabItem>
-
-<TabItem label="Yarn">
-
-```sh
-yarn add @applemusic-like-lyrics/core
-```
-
-</TabItem>
-</Tabs>
-
-AMLL also declares several graphics and animation libraries as peer dependencies to reuse dependencies that may already exist in your project. Some package managers/configurations install peers automatically; if not, install them manually.
-
-<Tabs syncKey="pkg">
-<TabItem label="npm">
-
-```sh
-npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite jss jss-preset-default
-```
-
-</TabItem>
-
-<TabItem label="pnpm">
-
-```sh
-pnpm add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite jss jss-preset-default
-```
-
-</TabItem>
-
-<TabItem label="Yarn">
-
-```sh
-yarn add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite jss jss-preset-default
-```
-
-</TabItem>
-</Tabs>
-
-Then you can use the vanilla package directly, or use React/Vue bindings.
+## Choose an Entry
 
 <CardGrid>
     <LinkCard
-        title="Use Vanilla"
-        description="Without a frontend framework"
-        href="#use-vanilla"
+        title="Core DOM"
+        description="Use the player instance directly without React or Vue"
+        href="#core-dom"
     />
     <LinkCard
-        title="Use React Bindings"
-        description="For React projects"
-        href="#use-react-bindings"
+        title="React Bindings"
+        description="Drive the player through React props"
+        href="#react-bindings"
     />
     <LinkCard
-        title="Use Vue Bindings"
-        description="For Vue projects"
-        href="#use-vue-bindings"
+        title="Vue Bindings"
+        description="Drive the player through Vue reactive props"
+        href="#vue-bindings"
     />
 </CardGrid>
 
-## Use Vanilla
+## Install Dependencies
 
-The AMLL core library is framework-agnostic. You can use this approach in any project.
-
-```js
-import { LyricPlayer } from "@applemusic-like-lyrics/core";
-
-// Create lyric player instance
-const player = new LyricPlayer();
-
-// Append the player's element to the page
-document.body.appendChild(player.getElement());
-
-// Set lyrics
-player.setLyricLines([]);
-
-// Set current playback time
-player.setCurrentTime(0);
-
-// Update animation frame
-player.update(0);
-```
-
-[`setLyricLines`](/en/reference/core/classlyricplayerbase#setlyriclines) accepts objects of type [`LyricLine`](/en/reference/core/interfacelyricline). Do not mutate the object after passing it in, or unexpected issues may occur.
-
-[`setCurrentTime`](/en/reference/core/classlyricplayerbase#setcurrenttime) and [`update`](/en/reference/core/classlyricplayerbase#update) accept current playback time (integer milliseconds), and **must be called frame by frame while playing**. Also call `update` once after each `setLyricLines` call to refresh state.
-
-See [API Reference: Core](/en/reference/core) for full details.
-
-## Use React Bindings
-
-Make sure `react` and `react-dom` are installed. Then install AMLL React bindings:
+The core renderer declares several Pixi packages as peer dependencies. npm 7+, pnpm, and Yarn Berry often install peers automatically. If your package manager does not, or your build reports missing `@pixi/*` packages, install them explicitly.
 
 <Tabs syncKey="pkg">
 <TabItem label="npm">
 
 ```sh
-npm install @applemusic-like-lyrics/react
+npm install @applemusic-like-lyrics/core @applemusic-like-lyrics/ttml
+npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite
 ```
 
 </TabItem>
@@ -136,7 +48,8 @@ npm install @applemusic-like-lyrics/react
 <TabItem label="pnpm">
 
 ```sh
-pnpm add @applemusic-like-lyrics/react
+pnpm add @applemusic-like-lyrics/core @applemusic-like-lyrics/ttml
+pnpm add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite
 ```
 
 </TabItem>
@@ -144,62 +57,182 @@ pnpm add @applemusic-like-lyrics/react
 <TabItem label="Yarn">
 
 ```sh
-yarn add @applemusic-like-lyrics/react
+yarn add @applemusic-like-lyrics/core @applemusic-like-lyrics/ttml
+yarn add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite
 ```
 
 </TabItem>
 </Tabs>
 
-The React binding package exports [`LyricPlayer`](/en/reference/react/variablelyricplayer) as the main component.
+`@applemusic-like-lyrics/ttml` converts TTML text into `LyricLine[]` that the AMLL player can consume directly: `parseTTML(ttmlText).lines`.
 
-```jsx
-import React, { useState } from "react";
-import { LyricPlayer } from "@applemusic-like-lyrics/react";
-import { parseTTML } from "@applemusic-like-lyrics/core";
+Every `LyricPlayer` entry needs the core stylesheet:
 
-const [currentTime, setCurrentTime] = useState(0);
-const [lyricLines, setLyricLines] = useState(0);
-const audio = document.getElementById("amll-audio"); // get <audio> element
+```ts
+import "@applemusic-like-lyrics/core/style.css";
+```
 
-const parsedResult = parseTTML(`SomeTtmlText...`); // parse lyrics
-setLyricLines(parsedResult);
+## Core DOM
 
-let lastTime = -1;
-const frame = (time) => {
-    if (lastTime === -1) {
-        lastTime = time;
-    }
+Use the Core package when you do not use a frontend framework, or when you want to manage the instance lifecycle yourself.
+
+```ts
+import { LyricPlayer } from "@applemusic-like-lyrics/core";
+import { parseTTML } from "@applemusic-like-lyrics/ttml";
+import "@applemusic-like-lyrics/core/style.css";
+
+const audio = document.querySelector<HTMLAudioElement>("#audio")!;
+const container = document.querySelector<HTMLElement>("#lyrics")!;
+const player = new LyricPlayer();
+
+container.appendChild(player.getElement());
+
+const ttmlText = await fetch("/lyrics.ttml").then((res) => res.text());
+player.setLyricLines(parseTTML(ttmlText).lines);
+player.setCurrentTime(0, true);
+player.update(0);
+
+let frameId = 0;
+let lastFrameTime = -1;
+
+function frame(time: number) {
+    if (lastFrameTime === -1) lastFrameTime = time;
+
+    const delta = time - lastFrameTime;
+    lastFrameTime = time;
+
     if (!audio.paused) {
-        const time = (audio.currentTime * 1000) | 0;
-        setCurrentTime(time);
+        player.setCurrentTime(Math.floor(audio.currentTime * 1000));
     }
-    lastTime = time;
-    requestAnimationFrame(frame);
-};
-requestAnimationFrame(frame);
+    player.update(delta);
 
-function App() {
+    frameId = requestAnimationFrame(frame);
+}
+
+frameId = requestAnimationFrame(frame);
+
+window.addEventListener("beforeunload", () => {
+    cancelAnimationFrame(frameId);
+    player.dispose();
+});
+```
+
+Key points:
+
+- `setLyricLines(lines, initialTime?)` accepts AMLL Core [`LyricLine[]`](/en/reference/core/interfacelyricline). Do not mutate the array objects after passing them in.
+- `setCurrentTime(ms, isSeek?)` uses integer milliseconds. Pass `true` for `isSeek` when the user seeks or jumps by clicking a lyric line.
+- `update(deltaMs)` advances animation. Call it every frame while the player is mounted; `deltaMs` is the elapsed time since the previous frame.
+- Call `dispose()` when the component is no longer used.
+
+## React Bindings
+
+Install the React binding package and React runtime:
+
+<Tabs syncKey="pkg">
+<TabItem label="npm">
+
+```sh
+npm install @applemusic-like-lyrics/react @applemusic-like-lyrics/ttml react react-dom
+```
+
+</TabItem>
+
+<TabItem label="pnpm">
+
+```sh
+pnpm add @applemusic-like-lyrics/react @applemusic-like-lyrics/ttml react react-dom
+```
+
+</TabItem>
+
+<TabItem label="Yarn">
+
+```sh
+yarn add @applemusic-like-lyrics/react @applemusic-like-lyrics/ttml react react-dom
+```
+
+</TabItem>
+</Tabs>
+
+`@applemusic-like-lyrics/react` depends on `@applemusic-like-lyrics/core`, so the Core Pixi peer dependencies and stylesheet are still required.
+
+```tsx
+import { useEffect, useRef, useState } from "react";
+import type { LyricLine } from "@applemusic-like-lyrics/core";
+import { LyricPlayer } from "@applemusic-like-lyrics/react";
+import { parseTTML } from "@applemusic-like-lyrics/ttml";
+import "@applemusic-like-lyrics/core/style.css";
+
+export function App() {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    const [lyricLines, setLyricLines] = useState<LyricLine[]>([]);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [playing, setPlaying] = useState(false);
+
+    useEffect(() => {
+        let canceled = false;
+        fetch("/lyrics.ttml")
+            .then((res) => res.text())
+            .then((text) => {
+                if (!canceled) setLyricLines(parseTTML(text).lines);
+            });
+
+        return () => {
+            canceled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!playing) return;
+
+        let frameId = 0;
+        const frame = () => {
+            const audio = audioRef.current;
+            if (audio && !audio.paused) {
+                setCurrentTime(Math.floor(audio.currentTime * 1000));
+                frameId = requestAnimationFrame(frame);
+            }
+        };
+
+        frameId = requestAnimationFrame(frame);
+        return () => cancelAnimationFrame(frameId);
+    }, [playing]);
+
     return (
         <>
-            <audio id="amll-audio" src="Audio-Music-Src" controls />
-            <LyricPlayer lyricLines={lyricLines} currentTime={currentTime} />
+            <audio
+                ref={audioRef}
+                src="/song.mp3"
+                controls
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
+                onSeeked={() => {
+                    const audio = audioRef.current;
+                    if (audio) setCurrentTime(Math.floor(audio.currentTime * 1000));
+                }}
+            />
+            <LyricPlayer
+                lyricLines={lyricLines}
+                currentTime={currentTime}
+                playing={playing}
+                style={{ height: 480 }}
+            />
         </>
     );
 }
-export default App;
 ```
 
-See [API Reference: React](/en/reference/react) for full interface documentation.
+The React binding calls Core `update()` internally every frame. Application code only needs to keep `currentTime` synced with audio playback and keep `playing` aligned with the audio state.
 
-## Use Vue Bindings
+## Vue Bindings
 
-Make sure Vue is installed. Then install AMLL Vue bindings:
+Install the Vue binding package and Vue:
 
 <Tabs syncKey="pkg">
 <TabItem label="npm">
 
 ```sh
-npm install @applemusic-like-lyrics/vue
+npm install @applemusic-like-lyrics/vue @applemusic-like-lyrics/ttml vue
 ```
 
 </TabItem>
@@ -207,7 +240,7 @@ npm install @applemusic-like-lyrics/vue
 <TabItem label="pnpm">
 
 ```sh
-pnpm add @applemusic-like-lyrics/vue
+pnpm add @applemusic-like-lyrics/vue @applemusic-like-lyrics/ttml vue
 ```
 
 </TabItem>
@@ -215,122 +248,66 @@ pnpm add @applemusic-like-lyrics/vue
 <TabItem label="Yarn">
 
 ```sh
-yarn add @applemusic-like-lyrics/vue
+yarn add @applemusic-like-lyrics/vue @applemusic-like-lyrics/ttml vue
 ```
 
 </TabItem>
 </Tabs>
 
-The Vue package exports [`LyricPlayer`](/en/reference/vue/classlyricplayer) as the main component.
-
-<Tabs syncKey="vapi">
-<TabItem label="Composition API">
+`@applemusic-like-lyrics/vue` depends on `@applemusic-like-lyrics/core`, so the Core Pixi peer dependencies and stylesheet are still required.
 
 ```vue
 <template>
-    <LyricPlayer
-        :lyric-lines="amllLyricLines"
-        :current-time="progressRef"
-        :playing="playingRef"
+    <audio
+        ref="audioRef"
+        src="/song.mp3"
+        controls
+        @play="onPlay"
+        @pause="playing = false"
+        @seeked="syncCurrentTime"
     />
-    <audio src="..." ref="audioElRef"></audio>
+    <LyricPlayer
+        :lyric-lines="lyricLines"
+        :current-time="currentTime"
+        :playing="playing"
+        style="height: 480px"
+    />
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, useTemplateRef } from "vue";
 import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { LyricPlayer } from "@applemusic-like-lyrics/vue";
-
+import { parseTTML } from "@applemusic-like-lyrics/ttml";
+import { onMounted, ref, shallowRef } from "vue";
 import "@applemusic-like-lyrics/core/style.css";
 
-const amllLyricLines: LyricLine[] = [];
+const audioRef = ref<HTMLAudioElement>();
+const lyricLines = shallowRef<LyricLine[]>([]);
+const currentTime = ref(0);
+const playing = ref(false);
 
-const progressRef = ref(0);
-const playingRef = ref(false);
+onMounted(async () => {
+    const ttmlText = await fetch("/lyrics.ttml").then((res) => res.text());
+    lyricLines.value = parseTTML(ttmlText).lines;
+});
 
-const audioElRef = useTemplateRef("audioElRef");
-
-function onFrame() {
-    if (audioElRef.value)
-        progressRef.value = Math.round(audioElRef.value.currentTime * 1000);
-    if (playingRef.value) requestAnimationFrame(onFrame);
+function syncCurrentTime() {
+    const audio = audioRef.value;
+    if (audio) currentTime.value = Math.floor(audio.currentTime * 1000);
 }
 
-onMounted(() => {
-    if (!audioElRef.value) return;
-    audioElRef.value.addEventListener("play", () => {
-        playingRef.value = true;
-        requestAnimationFrame(onFrame);
-    });
-    audioElRef.value.addEventListener("pause", () => {
-        playingRef.value = false;
-    });
-});
+function onPlay() {
+    playing.value = true;
+
+    const frame = () => {
+        if (!playing.value) return;
+        syncCurrentTime();
+        requestAnimationFrame(frame);
+    };
+
+    requestAnimationFrame(frame);
+}
 </script>
 ```
 
-</TabItem>
-
-<TabItem label="Options API">
-
-```vue
-<template>
-    <LyricPlayer
-        :lyric-lines="amllLyricLines"
-        :current-time="progressRef"
-        :playing="playingRef"
-    />
-    <audio src="..." ref="audioElRef"></audio>
-</template>
-
-<script lang="ts">
-import { defineComponent } from "vue";
-import type { LyricLine } from "@applemusic-like-lyrics/core";
-import { LyricPlayer } from "@applemusic-like-lyrics/vue";
-
-import "@applemusic-like-lyrics/core/style.css";
-
-export default defineComponent({
-    components: {
-        LyricPlayer,
-    },
-    data() {
-        return {
-            amllLyricLines: [] as LyricLine[],
-            progressRef: 0,
-            playingRef: false,
-        };
-    },
-    mounted() {
-        const audioEl = this.$refs.audioElRef as HTMLAudioElement | null;
-        if (!audioEl) return;
-
-        audioEl.addEventListener("play", () => {
-            this.playingRef = true;
-            this.onFrame();
-        });
-
-        audioEl.addEventListener("pause", () => {
-            this.playingRef = false;
-        });
-    },
-    methods: {
-        onFrame() {
-            const audioEl = this.$refs.audioElRef as HTMLAudioElement | null;
-            if (audioEl) {
-                this.progressRef = Math.round(audioEl.currentTime * 1000);
-            }
-
-            if (this.playingRef) {
-                requestAnimationFrame(this.onFrame);
-            }
-        },
-    },
-});
-</script>
-```
-
-</TabItem>
-</Tabs>
-
-See [API Reference: Vue](/en/reference/vue) for full interface documentation.
+The Vue binding also advances animation internally. Application code only needs to pass lyric data, integer millisecond progress, and playback state through reactive props.

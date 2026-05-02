@@ -2,80 +2,91 @@
 
 English / [简体中文](./README-CN.md)
 
-> Warning: This is a personal project and is still under development. There may still be many issues, so please do not use it directly in production environments!
+> Warning: This is a personal project and is still under development. There may still be many issues, so please do not use it directly in production environments.
 
 ![AMLL-Core](https://img.shields.io/badge/Core-%233178c6?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)
 [![npm](https://img.shields.io/npm/dt/%40applemusic-like-lyrics/core)](https://www.npmjs.com/package/@applemusic-like-lyrics/core)
 [![npm](https://img.shields.io/npm/v/%40applemusic-like-lyrics%2Fcore)](https://www.npmjs.com/package/@applemusic-like-lyrics/core)
 
-AMLL's pure JS core component framework, including lyric display components and background components and other reusable components.
-
-Everything here is UI framework-independent, so it can be indirectly referenced under various dynamic page frameworks.
-
-Or if you need to use component bindings, there's a [React binding version](../react/README.md) and a [Vue binding version](../vue/README.md)
-
-## Features
-
-- Pure frontend rendering for lyrics and background
-- Word-level timed lyrics with translation and romanization
-- Multi-line, duet, and background line support
-- Style customization via CSS variables
+AMLL Core is the framework-agnostic DOM component package. It provides the lyric player, background renderer, and shared types. The React and Vue bindings are built on top of this package.
 
 ## Installation
 
-Install the required dependencies (if the dependencies listed below are not installed, you need to install them yourself):
 ```bash
-npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite # using npm
-yarn add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite # using yarn
+npm install @applemusic-like-lyrics/core @applemusic-like-lyrics/ttml
+npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite
 ```
 
-Install the framework:
-```bash
-npm install @applemusic-like-lyrics/core # using npm
-yarn add @applemusic-like-lyrics/core # using yarn
-```
+For pnpm or Yarn, replace `npm install` with `pnpm add` or `yarn add`. Some package managers install peer dependencies automatically; if your build reports missing `@pixi/*` packages, install the Pixi packages above explicitly.
 
-## Usage Summary
+## Basic Usage
 
-For detailed API documentation, please refer to [./docs/modules.md](./docs/modules.md)
-
-A test program can be found in [../playground/core/src/test.ts](../playground/core/src/test.ts).
-
-```typescript
+```ts
 import { LyricPlayer } from "@applemusic-like-lyrics/core";
-import "@applemusic-like-lyrics/core/style.css"; // Import required styles
+import { parseTTML } from "@applemusic-like-lyrics/ttml";
+import "@applemusic-like-lyrics/core/style.css";
 
-const player = new LyricPlayer(); // Create a lyric player component
-document.body.appendChild(player.getElement()); // Add the component's element to the page
-player.setLyricLines([]) // Set lyrics
-player.setCurrentTime(0) // Set current playback time (needs to be called every frame)
-player.update(0) // Update lyric component animation (needs to be called every frame)
+const audio = document.querySelector<HTMLAudioElement>("#audio")!;
+const player = new LyricPlayer();
+
+document.body.appendChild(player.getElement());
+
+const ttmlText = await fetch("/lyrics.ttml").then((res) => res.text());
+player.setLyricLines(parseTTML(ttmlText).lines);
+player.setCurrentTime(0, true);
+player.update(0);
+
+let lastFrameTime = -1;
+
+function frame(time: number) {
+    if (lastFrameTime === -1) lastFrameTime = time;
+    const delta = time - lastFrameTime;
+    lastFrameTime = time;
+
+    if (!audio.paused) {
+        player.setCurrentTime(Math.floor(audio.currentTime * 1000));
+    }
+
+    player.update(delta);
+    requestAnimationFrame(frame);
+}
+
+requestAnimationFrame(frame);
 ```
 
-The lyrics set through `LyricPlayer.setLyricLines` is a `LyricLine[]` parameter. For details, please refer to the code in [./src/interfaces.ts](./src/interfaces.ts).
+Key points:
+
+- `setLyricLines()` accepts Core `LyricLine[]`. For TTML, use `parseTTML(ttmlText).lines` from `@applemusic-like-lyrics/ttml`.
+- `setCurrentTime()` uses integer milliseconds. Pass `true` as the second argument when the user seeks or jumps by clicking a lyric line.
+- `update(deltaMs)` advances animation and should be called every frame while the component is mounted.
+- Call `dispose()` when the component is no longer used.
 
 ## Data Model
 
-Lyrics input is `LyricLine[]`, with each line containing:
+`LyricLine[]` contains:
 
-- `words`: timed word array, each word includes `startTime` / `endTime` / `word`, with optional `romanWord`, `ruby`, and `obscene`
-- `translatedLyric`: translation text
-- `romanLyric`: romanization text
-- `startTime` / `endTime`: line timestamps
-- `isBG` / `isDuet`: background and duet flags
+- `words`: timed words, each with `startTime`, `endTime`, `word`, and optional `romanWord`, `ruby`, `obscene`
+- `translatedLyric`: translated text
+- `romanLyric`: romanized text
+- `startTime` / `endTime`: line timestamps in milliseconds
+- `isBG` / `isDuet`: background-vocal and duet flags
 
 ## Styling
 
-The main styles are provided by `@applemusic-like-lyrics/core/style.css`. Common overrides are via CSS variables:
+Import `@applemusic-like-lyrics/core/style.css`. Common customization is done by overriding CSS variables:
 
 ```css
 .amll-lyric-player {
-  --amll-lp-color: #ffffff;
-  --amll-lp-bg-color: rgba(0, 0, 0, 0.35);
+    --amll-lp-color: #ffffff;
+    --amll-lp-bg-color: rgba(0, 0, 0, 0.35);
 }
 ```
 
-## Development
+## Docs and Development
+
+- Guide: https://amll.dev/en/guides/overview/quickstart
+- API reference: https://amll.dev/en/reference/core
+- Playground: `packages/playground/core`
 
 ```bash
 bun run --cwd packages/core dev

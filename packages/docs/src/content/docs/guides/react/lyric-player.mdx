@@ -2,39 +2,82 @@
 title: LyricPlayer 组件
 ---
 
-## 概述
+`LyricPlayer` 是 AMLL 的歌词演出组件，负责歌词滚动、逐词高亮、间奏点、翻译、音译、背景人声和对唱布局。React 绑定会创建并维护 Core 播放器实例，应用侧通过 props 传入歌词数据和播放状态。
 
-LyricPlayer是AMLL的核心组件之一。AMLL的歌词演出（即歌词滚动、逐词歌词高亮、歌词辉光等效果）由LyricPlayer完成。
+## 基本用法
 
-AMLL对LyricPlayer进行了React绑定，因此你可以方便的在React项目中使用LyricPlayer。
+```tsx
+import type { LyricLine } from "@applemusic-like-lyrics/core";
+import { LyricPlayer } from "@applemusic-like-lyrics/react";
+import "@applemusic-like-lyrics/core/style.css";
 
-LyricPlayer的快速入门，你可以在[AMLL React快速入门](./quick-start)中找到。
+export function Lyrics({
+    lyricLines,
+    currentTime,
+    playing,
+}: {
+    lyricLines: LyricLine[];
+    currentTime: number;
+    playing: boolean;
+}) {
+    return (
+        <LyricPlayer
+            lyricLines={lyricLines}
+            currentTime={currentTime}
+            playing={playing}
+            style={{ height: 480 }}
+        />
+    );
+}
+```
 
-## 使用
+`currentTime` 必须是整数毫秒。React 绑定会自动逐帧调用内部 Core 实例的 `update()`，常规使用时不需要手动更新动画。
 
-请参考[AMLL React快速入门](./quick-start)中的教程。
+## Props
 
-## Props参数
-
-AMLL LyricPlayer已进行React绑定，通过Props即可进行自定义配置。
-
-Lyric Player提供以下Props：
-
-| Props | 类型 | 默认 | 作用 |
+| Prop | 类型 | 默认 | 作用 |
 | --- | --- | --- | --- |
-| disabled | 布尔值 | true  | 是否演出部分效果，目前会控制播放间奏点的动画的播放暂停与否 |
-| playing | 布尔值 | true | 是否演出部分效果，目前会控制播放间奏点的动画的播放暂停与否 |
-| alignAnchor | top/bottom/center | center | 设置歌词行的对齐方式，分别向目标歌词行的顶部/底部/垂直中心对齐|
-| alignPosition | 数字 | 0.5 | 设置默认的歌词行对齐位置，相对于整个歌词播放组件的大小位置。可以设置一个 0.0-1.0 之间的任意数字，代表组件高度由上到下的比例位置 |
-| enableSpring | 布尔值 | true | 设置是否使用物理弹簧算法实现歌词动画效果。如果启用，则会通过弹簧算法实时处理歌词位置，但是需要性能足够强劲的电脑方可流畅运行；如果不启用，则会回退到基于 `transition` 的过渡效果，对低性能的机器比较友好，但是效果会比较单一 |
-| enableBlur | 布尔值 | true | 设置是否启用歌词行的模糊效果 |
-| enableScale | 布尔值 | true | 设置是否使用物理弹簧算法实现歌词动画效果。如果启用，则会通过弹簧算法实时处理歌词位置，但是需要性能足够强劲的电脑方可流畅运行； 如果不启用，则会回退到基于 `transition` 的过渡效果，对低性能的机器比较友好，但是效果会比较单一|
-| hidePassedLines | 布尔值 | false | 设置是否隐藏已经播放过的歌词行 |
-| lyricLines | LyricLine[] |null| 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误 |
-| currentTime | 数字 | null | 设置当前播放进度，单位为毫秒且**必须是整数**，此时将会更新内部的歌词进度信息。内部会根据调用间隔和播放进度自动决定如何滚动和显示歌词，所以这个的调用频率越快越准确越好 |
-| linePosXSpringParams| Partial[spring.SpringParams] | null | 设置所有歌词行在​纵坐标上的弹簧属性，包括重量、弹力和阻力。params 需要设置的弹簧属性，提供的属性将会覆盖原来的属性，未提供的属性将会保持原样 |
-| linePosYSpringParams | Partial[spring.SpringParams] | null | 设置所有歌词行在​纵坐标上的弹簧属性，包括重量、弹力和阻力。params 需要设置的弹簧属性，提供的属性将会覆盖原来的属性，未提供的属性将会保持原样 |
-| lineScaleSpringParams | Partial[spring.SpringParams] | null | 设置所有歌词行在​缩放大小上的弹簧属性，包括重量、弹力和阻力。 params 需要设置的弹簧属性，提供的属性将会覆盖原来的属性，未提供的属性将会保持原样 |
-| bottomLine | ReactNode | null | 在一个特殊的底栏元素内加入指定元素，默认是空白的，可以往内部添加任意元素。这个元素始终在歌词的底部，可以用于显示歌曲创作者等信息 |
-| onLyricLineClick | (line: LyricLineMouseEvent) => void | null | 当某个歌词行被左键点击时触发的事件。line 歌词行的事件对象，可以访问到对应的歌词行信息和歌词行索引|
-| onLyricLineContextMenu | (line: LyricLineMouseEvent) => void | null | 当某个歌词行被右键点击时触发的事件。line 歌词行的事件对象，可以访问到对应的歌词行信息和歌词行索引|
+| `disabled` | `boolean` | `false` | 禁用组件内部逐帧 `update()` 循环；设为 `true` 后需要通过 ref 自行更新 Core 实例 |
+| `playing` | `boolean` | `true` | 当前播放状态，控制间奏点等效果的播放/暂停 |
+| `lyricLines` | `LyricLine[]` | `[]` | 当前歌词数据；传入后不要原地修改数组或其中对象 |
+| `currentTime` | `number` | `0` | 当前播放进度，单位为整数毫秒 |
+| `isSeeking` | `boolean` | `false` | 标记当前进度变化是否来自跳转/拖动，用于让布局立即对齐 |
+| `alignAnchor` | `"top" \| "bottom" \| "center"` | Core 默认 | 目标歌词行按顶部、底部或中心对齐 |
+| `alignPosition` | `number` | Core 默认 | 目标歌词行在组件高度中的对齐位置，取值通常为 `0.0` 到 `1.0` |
+| `enableSpring` | `boolean` | `true` | 是否启用弹簧动画；低性能设备可关闭以回退到过渡动画 |
+| `enableBlur` | `boolean` | `true` | 是否启用非当前歌词行的模糊效果 |
+| `enableScale` | `boolean` | `true` | 是否启用非当前歌词行的缩放效果 |
+| `hidePassedLines` | `boolean` | `false` | 是否隐藏已经播放过的歌词行 |
+| `wordFadeWidth` | `number` | `0.5` | 逐词渐变宽度，单位为主歌词字体大小倍数，不能为 `0` |
+| `maskObsceneWordsMode` | `MaskObsceneWordsMode` | `Disabled` | 不雅用语掩码模式 |
+| `maskObsceneWordChar` | `string` | `"*"` | 不雅用语掩码字符，只取第一个字符 |
+| `optimizeOptions` | `OptimizeLyricOptions` | `{}` | 歌词预处理选项；修改后会在下次设置歌词时生效 |
+| `linePosXSpringParams` | `Partial<spring.SpringParams>` | `undefined` | 横向位移弹簧参数；该 Core 方法已标记为将来移除 |
+| `linePosYSpringParams` | `Partial<spring.SpringParams>` | `undefined` | 纵向位移弹簧参数 |
+| `lineScaleSpringParams` | `Partial<spring.SpringParams>` | `undefined` | 缩放弹簧参数 |
+| `bottomLine` | `ReactNode` | `undefined` | 渲染到底部固定区域的自定义内容 |
+| `lyricPlayer` | `new () => LyricPlayerBase` | 默认 DOM 播放器 | 替换底层 Core 播放器实现 |
+| `onLyricLineClick` | `(event: LyricLineMouseEvent) => void` | `undefined` | 左键点击歌词行时触发 |
+| `onLyricLineContextMenu` | `(event: LyricLineMouseEvent) => void` | `undefined` | 右键点击歌词行时触发 |
+
+除上表外，组件也接受普通 `div` 属性，例如 `className`、`style` 和 `data-*`。
+
+## Ref
+
+```tsx
+import { useRef } from "react";
+import { LyricPlayer, type LyricPlayerRef } from "@applemusic-like-lyrics/react";
+
+const playerRef = useRef<LyricPlayerRef>(null);
+
+<LyricPlayer ref={playerRef} />;
+```
+
+`LyricPlayerRef` 包含：
+
+| 字段 | 类型 | 作用 |
+| --- | --- | --- |
+| `lyricPlayer` | `LyricPlayerBase \| undefined` | 底层 Core 播放器实例 |
+| `wrapperEl` | `HTMLDivElement \| null` | React 包装层 DOM |
+
+只有在需要调用 Core 的底层方法、读取底栏元素或在 `disabled` 模式下手动更新动画时，才需要使用 ref。

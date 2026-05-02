@@ -2,30 +2,77 @@
 title: BackgroundRender Component
 ---
 
-## Overview
+`BackgroundRender` is AMLL's static/animated background component. The React binding uses Core `MeshGradientRenderer` by default, and receives cover artwork or video resources through the `album` prop.
 
-`BackgroundRender` is one of AMLL core components. AMLL's static and animated background rendering is handled by this component.
+## Basic Usage
 
-AMLL provides React bindings for `BackgroundRender`, so you can use it directly in React projects.
+```tsx
+import { BackgroundRender } from "@applemusic-like-lyrics/react";
 
-For a quick setup, see [AMLL React Quick Start](./quick-start).
+export function Background({ albumUrl, playing }: {
+    albumUrl: string;
+    playing: boolean;
+}) {
+    return (
+        <BackgroundRender
+            album={albumUrl}
+            playing={playing}
+            style={{ position: "absolute", inset: 0 }}
+        />
+    );
+}
+```
 
-## Usage
+If the album source is a video URL, set `albumIsVideo`:
 
-Please refer to [AMLL React Quick Start](./quick-start).
+```tsx
+<BackgroundRender album="/cover-video.mp4" albumIsVideo />
+```
 
 ## Props
 
-`BackgroundRender` is configurable through React props.
-
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `albumImageUrl` | `string` | `true` | Album artwork URL used for background rendering |
-| `fps` | `number` | `30` | Background animation frame rate |
-| `playing` | `boolean` | `true` | Current playback state |
-| `flowSpeed` | `number` | `2` | Animation flow speed |
-| `hasLyric` | `boolean` | `true` | Whether lyric availability should affect rendering behavior. If unknown, use `true` or keep default. |
-| `lowFreqVolume` | `number` | `1.0` | Low-frequency volume hint (recommended 80hz-120hz range, value `0.0-1.0`). Some renderers react to this (for example beat-like motion). If unavailable, pass `undefined`, `1.0`, or keep default. |
-| `renderScale` | `number` | `0.5` | Rendering scale ratio |
-| `staticMode` | `boolean` | `false` | Enable static mode (freeze image after switching, disable updates to save performance) |
-| `renderer` | `Canvas` | `EplorRenderer` | Background renderer implementation. Default renderer may change across versions. Newer default: `EplorRenderer`; legacy: `PixiRenderer`. |
+| `album` | `string \| HTMLImageElement \| HTMLVideoElement` | `undefined` | Album resource for the background: image URL, video URL, image element, or video element |
+| `albumIsVideo` | `boolean` | `false` | Set to `true` when `album` is a string pointing to a video resource |
+| `fps` | `number` | renderer default | Background animation frame rate; use `0` to stop animation |
+| `playing` | `boolean` | `true` | Playback state, used to pause or resume background animation |
+| `flowSpeed` | `number` | renderer default | Background flow speed |
+| `hasLyric` | `boolean` | `true` | Whether lyric availability should affect background behavior; keep the default if unsure |
+| `lowFreqVolume` | `number` | renderer default | Low-frequency volume hint, usually `0.0` to `1.0` |
+| `renderScale` | `number` | renderer default | Background render scale; lower values reduce GPU cost |
+| `staticMode` | `boolean` | `false` | Freeze the background after switching resources to save performance |
+| `renderer` | `new (canvas: HTMLCanvasElement) => BaseRenderer` | `MeshGradientRenderer` | Replace the underlying background renderer; pass `PixiRenderer` for the legacy background |
+
+The component also accepts regular `div` props such as `className`, `style`, and `data-*`.
+
+## Use the Legacy Pixi Background
+
+```tsx
+import { BackgroundRender, PixiRenderer } from "@applemusic-like-lyrics/react";
+
+<BackgroundRender album="/cover.jpg" renderer={PixiRenderer} />;
+```
+
+`PixiRenderer` requires the Core Pixi peer dependencies. The current default background uses `MeshGradientRenderer`, and cover resources are passed through `album`.
+
+## Ref
+
+```tsx
+import { useRef } from "react";
+import {
+    BackgroundRender,
+    type BackgroundRenderRef,
+} from "@applemusic-like-lyrics/react";
+
+const bgRef = useRef<BackgroundRenderRef>(null);
+
+<BackgroundRender ref={bgRef} album="/cover.jpg" />;
+```
+
+`BackgroundRenderRef` contains:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `bgRender` | `AbstractBaseRenderer \| undefined` | Underlying Core background instance |
+| `wrapperEl` | `HTMLDivElement \| null` | React wrapper DOM element |

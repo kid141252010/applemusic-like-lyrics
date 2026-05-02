@@ -2,37 +2,82 @@
 title: LyricPlayer Component
 ---
 
-## Overview
+`LyricPlayer` is AMLL's lyric performance component. It handles lyric scrolling, word highlighting, interlude dots, translations, romanization, background vocals, and duet layout. The React binding creates and owns the Core player instance; application code passes lyric data and playback state through props.
 
-`LyricPlayer` is one of AMLL core components. Lyric rendering effects (scrolling, word highlighting, glow, etc.) are handled by this component.
+## Basic Usage
 
-AMLL provides React bindings for `LyricPlayer`, so it can be used directly in React projects.
+```tsx
+import type { LyricLine } from "@applemusic-like-lyrics/core";
+import { LyricPlayer } from "@applemusic-like-lyrics/react";
+import "@applemusic-like-lyrics/core/style.css";
 
-For a quick setup, see [AMLL React Quick Start](./quick-start).
+export function Lyrics({
+    lyricLines,
+    currentTime,
+    playing,
+}: {
+    lyricLines: LyricLine[];
+    currentTime: number;
+    playing: boolean;
+}) {
+    return (
+        <LyricPlayer
+            lyricLines={lyricLines}
+            currentTime={currentTime}
+            playing={playing}
+            style={{ height: 480 }}
+        />
+    );
+}
+```
 
-## Usage
-
-Please refer to [AMLL React Quick Start](./quick-start).
+`currentTime` must be integer milliseconds. The React binding calls the underlying Core instance's `update()` every frame, so normal usage does not need manual animation updates.
 
 ## Props
 
-`LyricPlayer` is configurable through React props.
-
 | Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `disabled` | `boolean` | `true` | Whether to disable part of the visual effects (currently mainly interlude marker animation) |
-| `playing` | `boolean` | `true` | Playback state; affects effect playback (for example interlude marker animation) |
-| `alignAnchor` | `top` / `bottom` / `center` | `center` | Alignment anchor for target lyric line |
-| `alignPosition` | `number` | `0.5` | Default line alignment position in component height (`0.0-1.0`) |
-| `enableSpring` | `boolean` | `true` | Use physics spring animation for lyric motion. Disabled mode falls back to transition-based behavior with lower effect richness but better low-end performance. |
-| `enableBlur` | `boolean` | `true` | Enable lyric line blur effect |
-| `enableScale` | `boolean` | `true` | Enable scale animation effect |
+| `disabled` | `boolean` | `false` | Disable the component's internal per-frame `update()` loop; when enabled, update the Core instance through a ref yourself |
+| `playing` | `boolean` | `true` | Playback state, used to play/pause effects such as interlude dots |
+| `lyricLines` | `LyricLine[]` | `[]` | Current lyric data. Do not mutate the array or objects after passing them in |
+| `currentTime` | `number` | `0` | Current playback position in integer milliseconds |
+| `isSeeking` | `boolean` | `false` | Marks the current progress change as a seek/jump so layout can align immediately |
+| `alignAnchor` | `"top" \| "bottom" \| "center"` | Core default | Align the target lyric line by top, bottom, or center |
+| `alignPosition` | `number` | Core default | Target lyric alignment position within component height, usually `0.0` to `1.0` |
+| `enableSpring` | `boolean` | `true` | Enable spring animation; disable on low-end devices to fall back to transition-based motion |
+| `enableBlur` | `boolean` | `true` | Enable blur on non-current lyric lines |
+| `enableScale` | `boolean` | `true` | Enable scale effect on non-current lyric lines |
 | `hidePassedLines` | `boolean` | `false` | Hide already-played lyric lines |
-| `lyricLines` | `LyricLine[]` | `null` | Lyric data. Do not mutate objects in this array after passing them in. |
-| `currentTime` | `number` | `null` | Current playback position in integer milliseconds. Higher update frequency gives better accuracy. |
-| `linePosXSpringParams` | `Partial[spring.SpringParams]` | `null` | Spring params for lyric line X-axis motion |
-| `linePosYSpringParams` | `Partial[spring.SpringParams]` | `null` | Spring params for lyric line Y-axis motion |
-| `lineScaleSpringParams` | `Partial[spring.SpringParams]` | `null` | Spring params for lyric line scale animation |
-| `bottomLine` | `ReactNode` | `null` | Custom content in bottom bar area (for example songwriter info) |
-| `onLyricLineClick` | `(line: LyricLineMouseEvent) => void` | `null` | Triggered when a lyric line is left-clicked |
-| `onLyricLineContextMenu` | `(line: LyricLineMouseEvent) => void` | `null` | Triggered when a lyric line is right-clicked |
+| `wordFadeWidth` | `number` | `0.5` | Word highlight fade width, in main lyric font-size units; must not be `0` |
+| `maskObsceneWordsMode` | `MaskObsceneWordsMode` | `Disabled` | Obscene-word masking mode |
+| `maskObsceneWordChar` | `string` | `"*"` | Mask character for obscene words; only the first character is used |
+| `optimizeOptions` | `OptimizeLyricOptions` | `{}` | Lyric preprocessing options; changes apply when lyrics are set again |
+| `linePosXSpringParams` | `Partial<spring.SpringParams>` | `undefined` | X-axis motion spring params; the Core method is marked for future removal |
+| `linePosYSpringParams` | `Partial<spring.SpringParams>` | `undefined` | Y-axis motion spring params |
+| `lineScaleSpringParams` | `Partial<spring.SpringParams>` | `undefined` | Scale animation spring params |
+| `bottomLine` | `ReactNode` | `undefined` | Custom content rendered into the fixed bottom area |
+| `lyricPlayer` | `new () => LyricPlayerBase` | default DOM player | Replace the underlying Core player implementation |
+| `onLyricLineClick` | `(event: LyricLineMouseEvent) => void` | `undefined` | Fired when a lyric line is left-clicked |
+| `onLyricLineContextMenu` | `(event: LyricLineMouseEvent) => void` | `undefined` | Fired when a lyric line is right-clicked |
+
+The component also accepts regular `div` props such as `className`, `style`, and `data-*`.
+
+## Ref
+
+```tsx
+import { useRef } from "react";
+import { LyricPlayer, type LyricPlayerRef } from "@applemusic-like-lyrics/react";
+
+const playerRef = useRef<LyricPlayerRef>(null);
+
+<LyricPlayer ref={playerRef} />;
+```
+
+`LyricPlayerRef` contains:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `lyricPlayer` | `LyricPlayerBase \| undefined` | Underlying Core player instance |
+| `wrapperEl` | `HTMLDivElement \| null` | React wrapper DOM element |
+
+Use the ref only when you need to call lower-level Core methods, access the bottom-line element, or manually update animation in `disabled` mode.

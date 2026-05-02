@@ -28,10 +28,12 @@ Although the goal of this project is not to imitate it completely, it will polis
 
 ### Main modules
 
--   [![AMLL-Core](https://img.shields.io/badge/Core-%233178c6?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/core/README.md): AMLL Core Component Library, written natively with DOM, provides lyric display component and dynamic fluid background component
--   [![AMLL-React](https://img.shields.io/badge/React-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react/README.md): AMLL React binding, provides React component forms of lyric display and dynamic fluid background components
--   [![AMLL-Vue](https://img.shields.io/badge/Vue-%2342d392?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/vue/README.md): AMLL Vue binding, provides Vue component forms of lyric display and dynamic fluid background components
--   [![AMLL-Lyric](https://img.shields.io/badge/Lyric-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/lyric/README.md): AMLL lyric parsing module, provides parsing and serialization support for various lyric formats including LyRiC, YRC, QRC, and Lyricify Syllable
+-   [![AMLL-Core](https://img.shields.io/badge/Core-%233178c6?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/core/README.md): AMLL Core DOM component library, providing lyric display and animated background components
+-   [![AMLL-React](https://img.shields.io/badge/React-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react/README.md): React bindings for the Core lyric display and animated background components
+-   [![AMLL-Vue](https://img.shields.io/badge/Vue-%2342d392?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/vue/README.md): Vue bindings for the Core lyric display and animated background components
+-   [![AMLL-React-Full](https://img.shields.io/badge/React%20Full-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react-full/README.md): Ready-to-use modular React player components
+-   [![AMLL-TTML](https://img.shields.io/badge/TTML-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/ttml/README.md): TTML parser/generator with conversion to Core `LyricLine[]`
+-   [![AMLL-Lyric](https://img.shields.io/badge/Lyric-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/lyric/README.md): Multi-format lyric parser/generator for LRC, YRC, QRC, Lyricify, TTML, and more
 
 ## Browser compatibility alerts
 

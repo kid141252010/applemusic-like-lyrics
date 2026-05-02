@@ -8,45 +8,57 @@
 [![npm](https://img.shields.io/npm/dt/%40applemusic-like-lyrics/vue)](https://www.npmjs.com/package/@applemusic-like-lyrics/vue)
 [![npm](https://img.shields.io/npm/v/%40applemusic-like-lyrics%2Fvue)](https://www.npmjs.com/package/@applemusic-like-lyrics/vue)
 
-AMLL 组件库的 Vue 绑定，你可以通过此库来更加方便地使用 AMLL 歌词组件。
-
-详情可以访问 [Core 核心组件的 README.md](../core/README-CN.md)。
+AMLL Core 的 Vue 绑定，提供 `LyricPlayer` 和 `BackgroundRender` 组件。
 
 ## 安装
 
-安装使用的依赖（如果以下列出的依赖包没有安装的话需要自行安装）：
 ```bash
-npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite jss jss-preset-default # 使用 npm
-yarn add @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite jss jss-preset-default # 使用 yarn
+npm install @applemusic-like-lyrics/vue @applemusic-like-lyrics/ttml vue
+npm install @pixi/app @pixi/core @pixi/display @pixi/filter-blur @pixi/filter-bulge-pinch @pixi/filter-color-matrix @pixi/sprite
 ```
 
-安装 Vue 绑定需要使用的依赖（如果以下列出的依赖包没有安装的话需要自行安装）：
-```bash
-npm install vue # 使用 npm
-yarn add vue # 使用 yarn
-```
+如果使用 pnpm 或 Yarn，将 `npm install` 替换为 `pnpm add` 或 `yarn add`。当前包只需要上面列出的 peer 依赖。
 
-安装本体框架：
-```bash
-npm install @applemusic-like-lyrics/vue # 使用 npm
-yarn add @applemusic-like-lyrics/vue # 使用 yarn
-```
-
-## 使用方式摘要
-
-由于 Vue 组件不方便生成 API 文档，所以还请自行查阅类型定义文件确定用法。
-
-（或者参考 React 绑定，二者属性和引用方式完全一致）
-
-一个测试用途的程序可以在 [../playground/vue/src/test.ts](../playground/vue/src/test.ts) 里找到。
+## 基本使用
 
 ```vue
-<tamplate>
-    <LyricPlayer :lyric-lines="[]" :current-time="0" />
-</tamplate>
+<template>
+    <LyricPlayer
+        :lyric-lines="lyricLines"
+        :current-time="currentTime"
+        :playing="playing"
+        style="height: 480px"
+    />
+</template>
 
 <script setup lang="ts">
+import type { LyricLine } from "@applemusic-like-lyrics/core";
 import { LyricPlayer } from "@applemusic-like-lyrics/vue";
+import { shallowRef, ref } from "vue";
+import "@applemusic-like-lyrics/core/style.css";
 
+const lyricLines = shallowRef<LyricLine[]>([]);
+const currentTime = ref(0);
+const playing = ref(false);
 </script>
 ```
+
+TTML 解析：
+
+```ts
+import { parseTTML } from "@applemusic-like-lyrics/ttml";
+
+lyricLines.value = parseTTML(ttmlText).lines;
+```
+
+背景组件：
+
+```vue
+<BackgroundRender :album="albumUrl" :playing="playing" />
+```
+
+## 文档
+
+- 快速入门：https://amll.dev/guides/overview/quickstart#vue-绑定
+- API 参考：https://amll.dev/reference/vue
+- 调试示例：`packages/playground/vue`

@@ -2,32 +2,77 @@
 title: BackgroundRender 组件
 ---
 
-## 概述
+`BackgroundRender` 是 AMLL 的动静态背景渲染组件。React 绑定默认使用 Core 的 `MeshGradientRenderer`，通过 `album` prop 接收封面图片或视频资源。
 
-bgRender是AMLL的核心组件之一。AMLL的动静态背景渲染由bgRender完成。
+## 基本用法
 
-AMLL对bgRender进行了React绑定，因此你可以方便的在React项目中使用bgRender。
+```tsx
+import { BackgroundRender } from "@applemusic-like-lyrics/react";
 
-bgRender的快速入门，你可以在[AMLL React快速入门](./quick-start)中找到。
+export function Background({ albumUrl, playing }: {
+    albumUrl: string;
+    playing: boolean;
+}) {
+    return (
+        <BackgroundRender
+            album={albumUrl}
+            playing={playing}
+            style={{ position: "absolute", inset: 0 }}
+        />
+    );
+}
+```
 
-## 使用
+如果传入的是视频 URL，请设置 `albumIsVideo`：
 
-请参考[AMLL React快速入门](./quick-start)中的教程。
+```tsx
+<BackgroundRender album="/cover-video.mp4" albumIsVideo />
+```
 
-## Props参数
+## Props
 
-AMLL bgRender已进行React绑定，通过Props即可进行自定义配置。
-
-bgRender提供以下Props：
-
-| Props | 类型 | 默认 | 作用 |
+| Prop | 类型 | 默认 | 作用 |
 | --- | --- | --- | --- |
-| albumImageUrl | 字符串 | true  | 设置背景专辑图片 |
-| fps | 数字 | 30  | 设置当前背景动画帧率 |
-| playing | 布尔值 | true | 设置当前播放状态 |
-| flowSpeed | 数字 | 2 | 设置当前动画流动速度 |
-| hasLyric | 布尔值 | true | 设置背景是否根据“是否有歌词”这个特征调整自身效果，例如有歌词时会变得更加活跃。部分渲染器会根据这个特征调整自身效果。如果不确定是否需要赋值或无法知晓是否包含歌词，请传入 true 或不做任何处理。 |
-| lowFreqVolume | 数字 | 1.0  | 设置低频的音量大小，范围在 80hz-120hz 之间为宜，取值范围在 0.0-1.0 之间。部分渲染器会根据音量大小调整背景效果（例如根据鼓点跳动）。如果无法获取到类似的数据，请传入 undefined 或 1.0 作为默认值，或不做任何处理。 |
-| renderScale | 数字 | 0.5 | 设置当前渲染缩放比例 |
-| staticMode | 布尔值 | false | 是否启用静态模式，即图片在更换后就会保持静止状态并禁用更新，以节省性能 |
-| renderer | Canvas | EplorRenderer | 设置渲染器。默认渲染器有可能会随着版本更新而更换。新版：EplorRenderer（真流体背景）；旧版：PixiRenderer |
+| `album` | `string \| HTMLImageElement \| HTMLVideoElement` | `undefined` | 背景专辑资源，可以是图片 URL、视频 URL、图片元素或视频元素 |
+| `albumIsVideo` | `boolean` | `false` | 当 `album` 是字符串且指向视频资源时设为 `true` |
+| `fps` | `number` | 渲染器默认 | 背景动画帧率；设为 `0` 可停止动画 |
+| `playing` | `boolean` | `true` | 当前播放状态，控制背景动画暂停或恢复 |
+| `flowSpeed` | `number` | 渲染器默认 | 背景流动速度 |
+| `hasLyric` | `boolean` | `true` | 是否按“有歌词”状态调整背景效果；不确定时保持默认 |
+| `lowFreqVolume` | `number` | 渲染器默认 | 低频音量提示，范围通常为 `0.0` 到 `1.0` |
+| `renderScale` | `number` | 渲染器默认 | 背景渲染缩放比例，降低可减少 GPU 压力 |
+| `staticMode` | `boolean` | `false` | 启用静态模式，切换资源后保持静止以节省性能 |
+| `renderer` | `new (canvas: HTMLCanvasElement) => BaseRenderer` | `MeshGradientRenderer` | 替换底层背景渲染器；可传入 `PixiRenderer` 使用旧版背景 |
+
+除上表外，组件也接受普通 `div` 属性，例如 `className`、`style` 和 `data-*`。
+
+## 使用旧版 Pixi 背景
+
+```tsx
+import { BackgroundRender, PixiRenderer } from "@applemusic-like-lyrics/react";
+
+<BackgroundRender album="/cover.jpg" renderer={PixiRenderer} />;
+```
+
+`PixiRenderer` 需要 Core 的 Pixi peer 依赖可用。当前默认背景使用 `MeshGradientRenderer`，封面资源统一通过 `album` 传入。
+
+## Ref
+
+```tsx
+import { useRef } from "react";
+import {
+    BackgroundRender,
+    type BackgroundRenderRef,
+} from "@applemusic-like-lyrics/react";
+
+const bgRef = useRef<BackgroundRenderRef>(null);
+
+<BackgroundRender ref={bgRef} album="/cover.jpg" />;
+```
+
+`BackgroundRenderRef` 包含：
+
+| 字段 | 类型 | 作用 |
+| --- | --- | --- |
+| `bgRender` | `AbstractBaseRenderer \| undefined` | 底层 Core 背景实例 |
+| `wrapperEl` | `HTMLDivElement \| null` | React 包装层 DOM |
