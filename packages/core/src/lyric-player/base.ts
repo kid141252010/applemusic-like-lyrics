@@ -594,6 +594,16 @@ export abstract class LyricPlayerBase
 		return Number.isFinite(wordEndTime) ? wordEndTime : line.endTime;
 	}
 
+	private getLineStartTime(line: LyricLine): number {
+		const wordStartTime = line.words.reduce((minStartTime, word) => {
+			if (word.word.trim().length === 0) return minStartTime;
+			if (!Number.isFinite(word.startTime)) return minStartTime;
+			return Math.min(minStartTime, word.startTime);
+		}, Number.POSITIVE_INFINITY);
+
+		return Number.isFinite(wordStartTime) ? wordStartTime : line.startTime;
+	}
+
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
 	 * @param lines 歌词数组
@@ -970,6 +980,21 @@ export abstract class LyricPlayerBase
 			const isActive =
 				hasBuffered || (i >= this.scrollToIndex && i < latestIndex);
 			const line = lineObj.getLine();
+			const previousLineObj = this.currentLyricLineObjects[i - 1];
+			const previousLine = previousLineObj?.getLine();
+			const previousLineHeight = previousLineObj
+				? (this.lyricLinesSize.get(previousLineObj)?.[1] ??
+					LINE_HEIGHT_FALLBACK)
+				: 0;
+			const lineHeight =
+				this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK;
+			const isPrecedingBackgroundLine =
+				line.isBG &&
+				previousLine &&
+				!previousLine.isBG &&
+				this.getLineStartTime(line) < this.getLineStartTime(previousLine);
+			const shouldOccupySpace =
+				(line.isBG && (isActive || !this.isPlaying)) || !line.isBG;
 
 			const shouldShowDots = interlude && i === interlude[2] + 1;
 
@@ -1030,9 +1055,13 @@ export abstract class LyricPlayerBase
 			const renderMode = isActive
 				? LyricLineRenderMode.GRADIENT
 				: LyricLineRenderMode.SOLID;
+			const targetPosY =
+				isPrecedingBackgroundLine && shouldOccupySpace
+					? curPos - previousLineHeight - lineHeight
+					: curPos;
 
 			lineObj.setTransform(
-				curPos,
+				targetPosY,
 				targetScale,
 				targetOpacity,
 				blurLevel,
@@ -1041,10 +1070,8 @@ export abstract class LyricPlayerBase
 				renderMode,
 			);
 
-			if (line.isBG && (isActive || !this.isPlaying)) {
-				curPos += this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK;
-			} else if (!line.isBG) {
-				curPos += this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK;
+			if (shouldOccupySpace && !isPrecedingBackgroundLine) {
+				curPos += lineHeight;
 			}
 			if (curPos >= 0 && !this.isSeeking) {
 				if (!line.isBG) delay += baseDelay;

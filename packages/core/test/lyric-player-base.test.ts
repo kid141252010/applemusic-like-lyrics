@@ -69,6 +69,7 @@ class TestLine {
 	enabled = false;
 	enableCalls = 0;
 	disableCalls = 0;
+	top = 0;
 
 	constructor(private readonly line: LyricLine) {}
 
@@ -91,7 +92,9 @@ class TestLine {
 	update(): void {}
 	dispose(): void {}
 	onLineSizeChange(): void {}
-	setTransform(): void {}
+	setTransform(top = this.top): void {
+		this.top = top;
+	}
 	rebuildElement(): void {}
 }
 
@@ -107,6 +110,10 @@ class TestLyricPlayer extends LyricPlayerBase {
 		this.processedLines = lines;
 		this.currentLyricLines = lines;
 		this.currentLyricLineObjects = lines.map((line) => new TestLine(line));
+		this.size[1] = 1000;
+		for (const lineObj of this.currentLyricLineObjects) {
+			this.lyricLinesSize.set(lineObj, [400, 100]);
+		}
 		this.hotLines.clear();
 		this.bufferedLines.clear();
 		this.currentTime = 0;
@@ -127,8 +134,9 @@ class TestLyricPlayer extends LyricPlayerBase {
 		};
 	}
 
-	override async calcLayout(): Promise<void> {
+	override async calcLayout(sync?: boolean, force?: boolean): Promise<void> {
 		this.layoutCalls++;
+		await super.calcLayout(sync, force);
 	}
 }
 
@@ -150,6 +158,40 @@ function makeLine(
 }
 
 describe("LyricPlayerBase background hot line timing", () => {
+	test("lays out a background line above its main line when the background starts first", () => {
+		const player = new TestLyricPlayer();
+		player.loadLines([
+			makeLine(500, 5000, [{ word: "main", startTime: 1000, endTime: 5000 }]),
+			makeLine(
+				500,
+				5000,
+				[{ word: "backing", startTime: 500, endTime: 2500 }],
+				true,
+			),
+		]);
+
+		player.setCurrentTime(1000);
+
+		expect(player.lineState(1).top).toBeLessThan(player.lineState(0).top);
+	});
+
+	test("keeps a background line below its main line when the main line starts first", () => {
+		const player = new TestLyricPlayer();
+		player.loadLines([
+			makeLine(1000, 5000, [{ word: "main", startTime: 1000, endTime: 5000 }]),
+			makeLine(
+				1000,
+				5000,
+				[{ word: "backing", startTime: 1200, endTime: 2500 }],
+				true,
+			),
+		]);
+
+		player.setCurrentTime(1200);
+
+		expect(player.lineState(1).top).toBeGreaterThan(player.lineState(0).top);
+	});
+
 	test("removes a background line at its last word end while keeping the main line active", () => {
 		const player = new TestLyricPlayer();
 		player.loadLines([
