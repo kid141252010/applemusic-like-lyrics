@@ -7,7 +7,6 @@ import type {
 	OptimizeLyricOptions,
 } from "../interfaces.ts";
 import styles from "../styles/lyric-player.module.css";
-import { eqSet } from "../utils/eq-set.ts";
 import { isCJK } from "../utils/is-cjk.ts";
 import { optimizeLyricLines } from "../utils/optimize-lyric.ts";
 import { Spring, type SpringParams } from "../utils/spring.ts";
@@ -582,6 +581,19 @@ export abstract class LyricPlayerBase
 		this.optimizeOptions = { ...this.optimizeOptions, ...options };
 	}
 
+	private getBackgroundLineEndTime(line: LyricLine): number {
+		const wordEndTime = line.words.reduce((maxEndTime, word) => {
+			if (word.word.trim().length === 0) return maxEndTime;
+			if (!Number.isFinite(word.startTime) || !Number.isFinite(word.endTime)) {
+				return maxEndTime;
+			}
+			if (word.endTime <= word.startTime) return maxEndTime;
+			return Math.max(maxEndTime, word.endTime);
+		}, Number.NEGATIVE_INFINITY);
+
+		return Number.isFinite(wordEndTime) ? wordEndTime : line.endTime;
+	}
+
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
 	 * @param lines 歌词数组
@@ -653,42 +665,45 @@ export abstract class LyricPlayerBase
 
 		if (!this.initialLayoutFinished && !isSeek) return;
 
-		const removedHotIds = new Set<number>();
 		const removedIds = new Set<number>();
 		const addedIds = new Set<number>();
+		const removeHotLine = (id: number) => {
+			if (this.hotLines.delete(id) && isSeek) {
+				this.currentLyricLineObjects[id]?.disable();
+			}
+		};
 
 		// 先检索当前已经超出时间范围的缓冲行，列入待删除集内
-		for (const lastHotId of this.hotLines) {
+		for (const lastHotId of [...this.hotLines]) {
 			const line = this.processedLines[lastHotId];
 			if (line) {
-				if (line.isBG) continue;
+				if (line.isBG) {
+					const backgroundEndTime = this.getBackgroundLineEndTime(line);
+					if (line.startTime > time || backgroundEndTime <= time) {
+						removeHotLine(lastHotId);
+					}
+					continue;
+				}
 				const nextLine = this.processedLines[lastHotId + 1];
 				if (nextLine?.isBG) {
 					const nextMainLine = this.processedLines[lastHotId + 2];
+					const backgroundEndTime = this.getBackgroundLineEndTime(nextLine);
 					const startTime = Math.min(line.startTime, nextLine?.startTime);
 					const endTime = Math.min(
 						Math.max(line.endTime, nextMainLine?.startTime ?? Number.MAX_VALUE),
-						Math.max(line.endTime, nextLine?.endTime),
+						Math.max(line.endTime, backgroundEndTime),
 					);
 					if (startTime > time || endTime <= time) {
-						this.hotLines.delete(lastHotId);
-						removedHotIds.add(lastHotId);
-						this.hotLines.delete(lastHotId + 1);
-						removedHotIds.add(lastHotId + 1);
-						if (isSeek) {
-							this.currentLyricLineObjects[lastHotId]?.disable();
-							this.currentLyricLineObjects[lastHotId + 1]?.disable();
-						}
+						removeHotLine(lastHotId);
+						removeHotLine(lastHotId + 1);
+					} else if (backgroundEndTime <= time) {
+						removeHotLine(lastHotId + 1);
 					}
 				} else if (line.startTime > time || line.endTime <= time) {
-					this.hotLines.delete(lastHotId);
-					removedHotIds.add(lastHotId);
-					if (isSeek) this.currentLyricLineObjects[lastHotId]?.disable();
+					removeHotLine(lastHotId);
 				}
 			} else {
-				this.hotLines.delete(lastHotId);
-				removedHotIds.add(lastHotId);
-				if (isSeek) this.currentLyricLineObjects[lastHotId]?.disable();
+				removeHotLine(lastHotId);
 			}
 		}
 		this.currentLyricLineObjects.forEach((lineObj, id, arr) => {
@@ -706,15 +721,24 @@ export abstract class LyricPlayerBase
 					if (!isSeek) {
 						lineObj.enable();
 					}
+				}
 
-					if (arr[id + 1]?.getLine()?.isBG) {
-						this.hotLines.add(id + 1);
-						addedIds.add(id + 1);
-						if (isSeek) {
-							arr[id + 1].enable(time, this.isPlaying);
-						} else {
-							arr[id + 1].enable();
-						}
+				const backgroundLineObj = arr[id + 1];
+				const backgroundLine = backgroundLineObj?.getLine();
+				if (
+					backgroundLine?.isBG &&
+					this.getBackgroundLineEndTime(backgroundLine) > time
+				) {
+					const backgroundLineId = id + 1;
+					const isBackgroundLineHot = this.hotLines.has(backgroundLineId);
+					if (!isBackgroundLineHot) {
+						this.hotLines.add(backgroundLineId);
+						addedIds.add(backgroundLineId);
+					}
+					if (isSeek) {
+						backgroundLineObj.enable(time, this.isPlaying);
+					} else if (!isBackgroundLineHot) {
+						backgroundLineObj.enable();
 					}
 				}
 			}
@@ -753,15 +777,17 @@ export abstract class LyricPlayerBase
 				this.scrollToIndex = Math.min(...this.bufferedLines);
 				this.calcLayout();
 			} else if (addedIds.size === 0 && removedIds.size > 0) {
-				if (eqSet(removedIds, this.bufferedLines)) {
-					for (const v of this.bufferedLines) {
-						if (!this.hotLines.has(v)) {
-							this.bufferedLines.delete(v);
-							this.currentLyricLineObjects[v]?.disable();
-						}
-					}
-					this.calcLayout();
+				for (const v of removedIds) {
+					this.bufferedLines.delete(v);
+					this.currentLyricLineObjects[v]?.disable();
 				}
+				if (
+					this.bufferedLines.size > 0 &&
+					!this.bufferedLines.has(this.scrollToIndex)
+				) {
+					this.scrollToIndex = Math.min(...this.bufferedLines);
+				}
+				this.calcLayout();
 			} else {
 				for (const v of addedIds) {
 					this.bufferedLines.add(v);
