@@ -1,16 +1,12 @@
 import bezier from "bezier-easing";
-import type { LyricLine, LyricWord } from "../../interfaces.ts";
-import styles from "../../styles/lyric-player.module.css";
-import { isCJK } from "../../utils/is-cjk.ts";
-import { LineBalancer } from "../../utils/line-balancer.ts";
-import { chunkAndSplitLyricWords } from "../../utils/lyric-split-words.ts";
-import {
-	createMatrix4,
-	matrix4ToCSS,
-	scaleMatrix4,
-} from "../../utils/matrix.ts";
-import { LyricLineBase } from "../base.ts";
-import { LyricLineRenderMode } from "../index.ts";
+import { LyricLineRenderMode } from "#lyric/base/fixures.ts";
+import type { LyricLine, LyricWord } from "#src/interfaces.ts";
+import { LyricLineBase } from "#src/lyric-player/base/line.ts";
+import styles from "#styles/lyric-player.module.css";
+import { isCJK } from "#utils/is-cjk.ts";
+import { LineBalancer } from "#utils/line-balancer.ts";
+import { chunkAndSplitLyricWords } from "#utils/lyric-split-words.ts";
+import { createMatrix4, matrix4ToCSS, scaleMatrix4 } from "#utils/matrix.ts";
 import type { DomLyricPlayer } from ".";
 
 interface RealWord extends LyricWord {
@@ -85,7 +81,7 @@ export class LyricLineEl extends LyricLineBase {
 	// 由 LyricPlayer 来设置
 	lineSize: number[] = [0, 0];
 
-	private renderMode = LyricLineRenderMode.SOLID;
+	private renderMode: LyricLineRenderMode = LyricLineRenderMode.SOLID;
 
 	private currentBrightAlpha = 1.0;
 	private currentDarkAlpha = 0.2;
