@@ -32,7 +32,7 @@ Although the goal of this project is not to imitate it completely, it will polis
 -   [![AMLL-React](https://img.shields.io/badge/React-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react/README.md): React bindings for the Core lyric display and animated background components
 -   [![AMLL-Vue](https://img.shields.io/badge/Vue-%2342d392?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/vue/README.md): Vue bindings for the Core lyric display and animated background components
 -   [![AMLL-React-Full](https://img.shields.io/badge/React%20Full-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react-full/README.md): Ready-to-use modular React player components
--   [![AMLL-TTML](https://img.shields.io/badge/TTML-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/ttml/README.md): TTML parser/generator with conversion to Core `LyricLine[]`
+-   [![AMLL-TTML](https://img.shields.io/badge/TTML-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/ttml/README.md): TTML processing package for structured parsing, generation, and conversion to/from AMLL lyric data
 -   [![AMLL-Lyric](https://img.shields.io/badge/Lyric-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/lyric/README.md): Multi-format lyric parser/generator for LRC, YRC, QRC, Lyricify, TTML, and more
 
 ## Browser compatibility alerts

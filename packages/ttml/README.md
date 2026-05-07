@@ -6,7 +6,7 @@ English / [简体中文](./README-CN.md)
 [![npm](https://img.shields.io/npm/dt/%40applemusic-like-lyrics/ttml)](https://www.npmjs.com/package/@applemusic-like-lyrics/ttml)
 [![npm](https://img.shields.io/npm/v/%40applemusic-like-lyrics%2Fttml)](https://www.npmjs.com/package/@applemusic-like-lyrics/ttml)
 
-`@applemusic-like-lyrics/ttml` is AMLL's TTML parser/generator package. It can read/write structured TTML and convert TTML lyrics into data that Core players can consume directly.
+`@applemusic-like-lyrics/ttml` is AMLL's TTML processing package. It provides structured TTML parsing/generation and conversion to/from AMLL's simplified lyric data.
 
 ## Installation
 

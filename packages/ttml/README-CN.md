@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/dt/%40applemusic-like-lyrics/ttml)](https://www.npmjs.com/package/@applemusic-like-lyrics/ttml)
 [![npm](https://img.shields.io/npm/v/%40applemusic-like-lyrics%2Fttml)](https://www.npmjs.com/package/@applemusic-like-lyrics/ttml)
 
-`@applemusic-like-lyrics/ttml` 是 AMLL 的 TTML 解析与生成包，提供 TTML 结构化读写，以及转换为 Core 播放器可直接使用的歌词数据。
+`@applemusic-like-lyrics/ttml` 是 AMLL 的 TTML 处理包，提供 TTML 结构化解析、生成，以及与 AMLL 简化歌词数据的互转能力。
 
 ## 安装
 
