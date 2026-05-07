@@ -604,6 +604,10 @@ export abstract class LyricPlayerBase
 		return Number.isFinite(wordStartTime) ? wordStartTime : line.startTime;
 	}
 
+	private shouldBackgroundLineOccupySpace(index: number): boolean {
+		return this.bufferedLines.has(index) || !this.isPlaying;
+	}
+
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
 	 * @param lines 歌词数组
@@ -930,30 +934,55 @@ export abstract class LyricPlayerBase
 		}
 		// 避免一开始就让所有歌词行挤在一起
 		const LINE_HEIGHT_FALLBACK = this.size[1] / 5;
-		const scrollOffset = this.currentLyricLineObjects
-			.slice(0, targetAlignIndex)
-			.reduce(
-				(acc, el) =>
-					acc +
-					(el.getLine().isBG && this.isPlaying
-						? 0
-						: (this.lyricLinesSize.get(el)?.[1] ?? LINE_HEIGHT_FALLBACK)),
-				0,
-			);
+		const lineObjects = this.currentLyricLineObjects;
+		const getLineHeight = (lineObj: LyricLineBase) =>
+			this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK;
+		const getLayoutLineHeight = (index: number) => {
+			const lineObj = lineObjects[index];
+			if (!lineObj) return 0;
+
+			const line = lineObj.getLine();
+			if (line.isBG && !this.shouldBackgroundLineOccupySpace(index)) return 0;
+
+			return getLineHeight(lineObj);
+		};
+		const getScrollOffsetBefore = (targetIndex: number) => {
+			let offset = 0;
+
+			for (let i = 0; i < targetIndex && i < lineObjects.length; i++) {
+				const lineObj = lineObjects[i];
+				const line = lineObj.getLine();
+				const backgroundLineObj = lineObjects[i + 1];
+				const backgroundLine = backgroundLineObj?.getLine();
+
+				if (!line.isBG && backgroundLineObj && backgroundLine?.isBG) {
+					offset += getLineHeight(lineObj);
+					if (targetIndex > i + 1) {
+						offset += this.shouldBackgroundLineOccupySpace(i + 1)
+							? getLineHeight(backgroundLineObj)
+							: 0;
+					}
+					i += 1;
+				} else {
+					offset += getLayoutLineHeight(i);
+				}
+			}
+
+			return offset;
+		};
+		const scrollOffset = getScrollOffsetBefore(targetAlignIndex);
 		this.scrollBoundary[0] = -scrollOffset;
 		curPos -= scrollOffset;
 		curPos += this.size[1] * this.alignPosition;
-		const curLine = this.currentLyricLineObjects[targetAlignIndex];
+		const curLine = lineObjects[targetAlignIndex];
 		this.targetAlignIndex = targetAlignIndex;
 
-		const isBottomFocused =
-			targetAlignIndex === this.currentLyricLineObjects.length;
+		const isBottomFocused = targetAlignIndex === lineObjects.length;
 		this.bottomLine.setFocused(isBottomFocused);
 
 		let targetLineHeight = 0;
 		if (curLine) {
-			targetLineHeight =
-				this.lyricLinesSize.get(curLine)?.[1] ?? LINE_HEIGHT_FALLBACK;
+			targetLineHeight = getLayoutLineHeight(targetAlignIndex);
 		} else if (isBottomFocused) {
 			targetLineHeight = this.bottomLine.lineSize[1];
 		}
@@ -975,28 +1004,9 @@ export abstract class LyricPlayerBase
 		let delay = 0;
 		let baseDelay = sync ? 0 : 0.05;
 		let setDots = false;
-		this.currentLyricLineObjects.forEach((lineObj, i) => {
-			const hasBuffered = this.bufferedLines.has(i);
-			const isActive =
-				hasBuffered || (i >= this.scrollToIndex && i < latestIndex);
-			const line = lineObj.getLine();
-			const previousLineObj = this.currentLyricLineObjects[i - 1];
-			const previousLine = previousLineObj?.getLine();
-			const previousLineHeight = previousLineObj
-				? (this.lyricLinesSize.get(previousLineObj)?.[1] ??
-					LINE_HEIGHT_FALLBACK)
-				: 0;
-			const lineHeight =
-				this.lyricLinesSize.get(lineObj)?.[1] ?? LINE_HEIGHT_FALLBACK;
-			const isPrecedingBackgroundLine =
-				line.isBG &&
-				previousLine &&
-				!previousLine.isBG &&
-				this.getLineStartTime(line) < this.getLineStartTime(previousLine);
-			const shouldOccupySpace =
-				(line.isBG && (isActive || !this.isPlaying)) || !line.isBG;
 
-			const shouldShowDots = interlude && i === interlude[2] + 1;
+		const placeInterludeDots = (lineIndex: number) => {
+			const shouldShowDots = interlude && lineIndex === interlude[2] + 1;
 
 			if (!setDots && shouldShowDots) {
 				setDots = true;
@@ -1016,6 +1026,21 @@ export abstract class LyricPlayerBase
 				curPos += this.interludeDotsSize[1];
 				curPos += dotMargin;
 			}
+		};
+
+		const layoutLine = (
+			lineObj: LyricLineBase,
+			i: number,
+			shouldOccupySpace: boolean,
+			dotBeforeIndex?: number,
+		) => {
+			if (dotBeforeIndex !== undefined) placeInterludeDots(dotBeforeIndex);
+
+			const hasBuffered = this.bufferedLines.has(i);
+			const isActive =
+				hasBuffered || (i >= this.scrollToIndex && i < latestIndex);
+			const line = lineObj.getLine();
+			const lineHeight = getLineHeight(lineObj);
 
 			let targetOpacity: number;
 
@@ -1055,13 +1080,9 @@ export abstract class LyricPlayerBase
 			const renderMode = isActive
 				? LyricLineRenderMode.GRADIENT
 				: LyricLineRenderMode.SOLID;
-			const targetPosY =
-				isPrecedingBackgroundLine && shouldOccupySpace
-					? curPos - previousLineHeight - lineHeight
-					: curPos;
 
 			lineObj.setTransform(
-				targetPosY,
+				curPos,
 				targetScale,
 				targetOpacity,
 				blurLevel,
@@ -1070,7 +1091,7 @@ export abstract class LyricPlayerBase
 				renderMode,
 			);
 
-			if (shouldOccupySpace && !isPrecedingBackgroundLine) {
+			if (shouldOccupySpace) {
 				curPos += lineHeight;
 			}
 			if (curPos >= 0 && !this.isSeeking) {
@@ -1078,10 +1099,54 @@ export abstract class LyricPlayerBase
 
 				if (i >= this.scrollToIndex) baseDelay /= 1.05;
 			}
-		});
+		};
+
+		for (let i = 0; i < lineObjects.length; i++) {
+			const lineObj = lineObjects[i];
+			const line = lineObj.getLine();
+			const backgroundLineObj = lineObjects[i + 1];
+			const backgroundLine = backgroundLineObj?.getLine();
+
+			if (!line.isBG && backgroundLineObj && backgroundLine?.isBG) {
+				const backgroundIndex = i + 1;
+				const shouldBackgroundOccupySpace =
+					this.shouldBackgroundLineOccupySpace(backgroundIndex);
+				const isBackgroundFirst =
+					this.getLineStartTime(backgroundLine) < this.getLineStartTime(line);
+
+				if (isBackgroundFirst) {
+					placeInterludeDots(i);
+					placeInterludeDots(backgroundIndex);
+					layoutLine(
+						backgroundLineObj,
+						backgroundIndex,
+						shouldBackgroundOccupySpace,
+					);
+					layoutLine(lineObj, i, true);
+				} else {
+					layoutLine(lineObj, i, true, i);
+					layoutLine(
+						backgroundLineObj,
+						backgroundIndex,
+						shouldBackgroundOccupySpace,
+						backgroundIndex,
+					);
+				}
+
+				i = backgroundIndex;
+				continue;
+			}
+
+			layoutLine(
+				lineObj,
+				i,
+				!line.isBG || this.shouldBackgroundLineOccupySpace(i),
+				i,
+			);
+		}
 		this.scrollBoundary[1] = curPos + this.scrollOffset - this.size[1] / 2;
 
-		const bottomIndex = this.currentLyricLineObjects.length;
+		const bottomIndex = lineObjects.length;
 		const finalBottomBlur = this.calculateBlur(
 			bottomIndex,
 			isBottomFocused,

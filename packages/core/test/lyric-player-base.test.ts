@@ -175,6 +175,28 @@ describe("LyricPlayerBase background hot line timing", () => {
 		expect(player.lineState(1).top).toBeLessThan(player.lineState(0).top);
 	});
 
+	test("releases preceding background line layout space after its last word ends", () => {
+		const player = new TestLyricPlayer();
+		player.loadLines([
+			makeLine(500, 5000, [{ word: "main", startTime: 1000, endTime: 5000 }]),
+			makeLine(
+				500,
+				5000,
+				[{ word: "backing", startTime: 500, endTime: 2500 }],
+				true,
+			),
+			makeLine(5000, 8000, [{ word: "next", startTime: 5000, endTime: 8000 }]),
+		]);
+
+		player.setCurrentTime(1000);
+		const nextLineTopWithBackground = player.lineState(2).top;
+
+		player.setCurrentTime(2500);
+
+		expect(player.activeState()).toEqual({ hot: [0], buffered: [0] });
+		expect(nextLineTopWithBackground - player.lineState(2).top).toBe(100);
+	});
+
 	test("keeps a background line below its main line when the main line starts first", () => {
 		const player = new TestLyricPlayer();
 		player.loadLines([
