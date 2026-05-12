@@ -44,19 +44,21 @@
 				"nx.json",
 				"package.json",
 				"pnpm-lock.yaml",
-				"pnpm-workspace.yaml",
 				"bun.lock",
+				"pnpm-workspace.yaml",
 				"tsconfig.json",
 				"tsconfig.base.json",
 				"packages/docs/**",
 				"packages/*/docs/**",
 				"packages/playground/**",
-				"patches/**"
+				"patches/**",
+				"**/test/**",
+				"**/tests/**"
 			]
 		},
 		"version": {
 			"conventionalCommits": false,
-			"preVersionCommand": "bun run build:libs"
+			"preVersionCommand": "pnpm run build:libs"
 		},
 		"changelog": {
 			"workspaceChangelog": false,
