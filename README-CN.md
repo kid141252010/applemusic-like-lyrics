@@ -29,6 +29,12 @@
 
 </div>
 
+> [!Warning]
+> 致 AMLL Player 的开发/使用者：  
+> AMLL Player 已迁移至 [独立仓库](https://github.com/amll-dev/amll-player)
+> 
+> 仓库链接已更新为 https://github.com/amll-dev/amll-player
+
 ## AMLL 生态及源码结构
 
 ### 主要模块
