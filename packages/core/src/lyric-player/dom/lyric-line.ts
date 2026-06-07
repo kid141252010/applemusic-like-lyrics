@@ -1011,7 +1011,7 @@ export class LyricLineEl extends LyricLineBase {
 				String(this.currentDarkAlpha),
 			);
 		} else {
-			this.lineTransforms.scale.setTargetPosition(scale);
+			this.lineTransforms.scale.setTargetPosition(scale, delay);
 			if (this.blur !== Math.min(5, blur)) {
 				this.blur = Math.min(5, blur);
 				this.element.style.filter = `blur(${blur.toFixed(3)}px)`;

@@ -146,6 +146,7 @@ function tryAdvanceStartTime(lines: LyricLine[]) {
 	const defaultAdvanceAmount = 600;
 	const fallbackAdvanceAmount = 400;
 	const fallbackAdvanceRatio = 0.3;
+	const minPrepositionedBgAdvanceAmount = 300;
 
 	let prevLineStartTime = 0;
 	let prevLineEndTime = 0;
@@ -180,13 +181,30 @@ function tryAdvanceStartTime(lines: LyricLine[]) {
 		}
 
 		const targetTime = line.startTime - targetAdvanceAmount;
-		const newStartTime = Math.max(safeBoundary, targetTime);
+		let newStartTime = Math.max(safeBoundary, targetTime);
+
+		const nextLine = lines[i + 1];
+		if (nextLine?.isBG) {
+			const mainFirstWordStartTime =
+				line.words.find((w) => w.word.trim().length > 0)?.startTime ??
+				line.startTime;
+			const bgFirstWordStartTime =
+				nextLine.words.find((w) => w.word.trim().length > 0)?.startTime ??
+				nextLine.startTime;
+			if (bgFirstWordStartTime < mainFirstWordStartTime) {
+				const minBgPreEntryStartTime =
+					bgFirstWordStartTime - minPrepositionedBgAdvanceAmount;
+				newStartTime = Math.min(
+					newStartTime,
+					Math.max(targetTime, minBgPreEntryStartTime),
+				);
+			}
+		}
 
 		if (newStartTime < line.startTime) {
 			line.startTime = newStartTime;
 		}
 
-		const nextLine = lines[i + 1];
 		if (nextLine?.isBG) {
 			nextLine.startTime = line.startTime;
 		}

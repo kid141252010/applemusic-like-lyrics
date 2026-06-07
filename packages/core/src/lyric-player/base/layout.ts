@@ -195,6 +195,8 @@ export interface ComputeGroupPresentationInput {
 	scrollToIndex: number;
 	/** 当前缓冲区（{@link PlayerTimelineState.bufferedGroups}）中最靠后的歌词行索引 */
 	latestIndex: number;
+	/** 当前歌词组是否仍处于热组中 */
+	hasHot: boolean;
 	/** 当前歌词行是否在缓冲集合内 */
 	hasBuffered: boolean;
 	/** 是否启用隐藏已播放行 */
@@ -236,6 +238,7 @@ export function computeGroupPresentation(
 		groupIndex,
 		scrollToIndex,
 		latestIndex,
+		hasHot,
 		hasBuffered,
 		hidePassedLines,
 		isPlaying,
@@ -247,7 +250,7 @@ export function computeGroupPresentation(
 	} = input;
 
 	const isActive =
-		hasBuffered || (groupIndex >= scrollToIndex && groupIndex < latestIndex);
+		hasHot || (groupIndex >= scrollToIndex && groupIndex < latestIndex);
 
 	const blurLevel = computeLineBlur({
 		enableBlur,

@@ -13,6 +13,13 @@
 			"library"
 		],
 		"targets": {
+			"test": {
+				"executor": "nx:run-commands",
+				"options": {
+					"command": "vitest test",
+					"cwd": "packages/core"
+				}
+			},
 			"nx-release-publish": {
 				"executor": "@nx/js:release-publish",
 				"dependsOn": []
@@ -29,7 +36,8 @@
 		"build": "run-p typecheck \"build-only {@}\" --",
 		"build:dev": "tsdown",
 		"fmt": "biome format --write ./src",
-		"dev": "nx run @applemusic-like-lyrics/playground-core:dev"
+		"dev": "nx run @applemusic-like-lyrics/playground-core:dev",
+		"test": "vitest test"
 	},
 	"type": "module",
 	"main": "./dist/amll-core.cjs",
@@ -68,7 +76,8 @@
 		"typedoc": "catalog:",
 		"typedoc-plugin-markdown": "catalog:",
 		"@tsdown/css": "catalog:",
-		"tsdown": "catalog:"
+		"tsdown": "catalog:",
+		"vitest": "catalog:"
 	},
 	"peerDependencies": {
 		"@pixi/app": "*",

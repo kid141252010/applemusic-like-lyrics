@@ -55,6 +55,7 @@ export abstract class LyricPlayerBase
 		lastCurrentTime: 0,
 		hotGroups: new Set(),
 		bufferedGroups: new Set(),
+		bufferedGroupExitTimes: new Map(),
 		scrollToIndex: 0,
 		isSeeking: false,
 		isPlaying: true,
@@ -455,6 +456,7 @@ export abstract class LyricPlayerBase
 		this.interludeDots.setInterlude(undefined);
 		this.timelineState.hotGroups.clear();
 		this.timelineState.bufferedGroups.clear();
+		this.timelineState.bufferedGroupExitTimes.clear();
 
 		if (import.meta.env.DEV) {
 			console.log("歌词处理完成", this);
@@ -625,6 +627,7 @@ export abstract class LyricPlayerBase
 		let setDots = false;
 
 		this.currentLyricGroups.forEach((group, i) => {
+			const hasHot = this.timelineState.hotGroups.has(i);
 			const hasBuffered = this.timelineState.bufferedGroups.has(i);
 
 			const shouldShowDots = interlude && i === interlude.anchorLineIndex + 1;
@@ -655,6 +658,7 @@ export abstract class LyricPlayerBase
 				groupIndex: i,
 				scrollToIndex: this.timelineState.scrollToIndex,
 				latestIndex,
+				hasHot,
 				hasBuffered,
 				hidePassedLines: this.hidePassedLines,
 				isPlaying: this.timelineState.isPlaying,

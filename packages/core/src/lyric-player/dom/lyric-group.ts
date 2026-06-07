@@ -131,18 +131,22 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 		this.element.style.filter = `blur(${Math.min(5, this.blur)}px)`;
 
 		if (!this.lyricPlayer.getEnableSpring()) {
-			this.element.style.transitionDelay = `${this.delay}ms`;
+			this.element.style.transitionDelay = `${(this.delay * 1000) | 0}ms`;
 		}
 
 		if (this.bgWrapper) {
-			if (this.lastIsActive !== this.isActive) {
-				this.lastIsActive = this.isActive;
-				this.bgWrapper.classList.toggle(styles.bgWrapperActive, this.isActive);
-			}
-
 			const slideY = this.bgSlideY.getCurrentPosition();
 			const slideYStr = slideY.toFixed(1);
 			const activeProgress = clamp01(1 - Math.abs(slideY) / 80);
+			const shouldWrapperActive = activeProgress > 0.01;
+
+			if (this.lastIsActive !== shouldWrapperActive) {
+				this.lastIsActive = shouldWrapperActive;
+				this.bgWrapper.classList.toggle(
+					styles.bgWrapperActive,
+					shouldWrapperActive,
+				);
+			}
 
 			const scaleStr = (0.8 + activeProgress * 0.2).toFixed(3);
 			this.bgWrapper.style.transform = `translateY(${slideYStr}%) scale(${scaleStr})`;
@@ -160,7 +164,9 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 			}
 
 			const targetHiddenYStr = shouldBgFirst ? "80.0" : "-80.0";
-			const isHidden = slideYStr === targetHiddenYStr && !this.isActive;
+			const isHidden =
+				(slideYStr === targetHiddenYStr || activeProgress <= 0.01) &&
+				!shouldWrapperActive;
 			this.bgWrapper.classList.toggle(styles.bgWrapperHidden, isHidden);
 		}
 	}
