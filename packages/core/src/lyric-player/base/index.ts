@@ -59,7 +59,6 @@ export abstract class LyricPlayerBase
 		lastCurrentTime: 0,
 		hotGroups: new Set(),
 		bufferedGroups: new Set(),
-		bufferedGroupExitTimes: new Map(),
 		scrollToIndex: 0,
 		isSeeking: false,
 		isPlaying: true,
@@ -460,7 +459,6 @@ export abstract class LyricPlayerBase
 		this.interludeDots.setInterlude(undefined);
 		this.timelineState.hotGroups.clear();
 		this.timelineState.bufferedGroups.clear();
-		this.timelineState.bufferedGroupExitTimes.clear();
 
 		if (import.meta.env.DEV) {
 			console.log("歌词处理完成", this);
@@ -485,8 +483,8 @@ export abstract class LyricPlayerBase
 	 */
 	setCurrentTime(time: number, isSeek = false): void {
 		// 歌词行为如下：
-		// 旧热行离开后会保留在缓冲区中等待退场过渡，再延迟禁用
-		// 如果同一帧加入新热行，则新热行也会进入缓冲区，滚动位置优先对齐到最靠前的新热行
+		// 如果当前所有缓冲组都将被删除且有新热组加入，则删除旧缓冲组并加入新热组作为缓冲组
+		// 如果当前所有缓冲组都将被删除且没有新热组加入，则删除所有缓冲组，且也不会修改当前滚动位置
 		// seeking 时会丢弃退场缓冲，仅按当前时间快照重建热行与缓冲行
 
 		time = Math.round(time);

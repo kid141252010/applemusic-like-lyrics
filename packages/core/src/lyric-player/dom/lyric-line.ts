@@ -63,6 +63,7 @@ export class LyricLineEl extends LyricLineBase {
 	lineSize: number[] = [0, 0];
 
 	private renderMode: LyricLineRenderMode = LyricLineRenderMode.SOLID;
+	private localOffsetFrame?: number;
 
 	private currentBrightAlpha = 1.0;
 	private currentDarkAlpha = 0.2;
@@ -280,7 +281,11 @@ export class LyricLineEl extends LyricLineBase {
 
 	private rebuildStyle() {
 		let style = "";
-		style += `transform: scale(${(this.lineTransforms.scale.getCurrentPosition() / 100).toFixed(4)});`;
+		style += `transform: translateY(${this.lineTransforms.posY
+			.getCurrentPosition()
+			.toFixed(
+				1,
+			)}px) scale(${(this.lineTransforms.scale.getCurrentPosition() / 100).toFixed(4)});`;
 
 		if (!this.lyricPlayer.getEnableSpring()) {
 			style += `transition-delay:${this.delay}ms;`;
@@ -972,6 +977,27 @@ export class LyricLineEl extends LyricLineBase {
 		);
 	}
 
+	override setLocalOffsetY(
+		offsetY: number,
+		force: boolean,
+		delay: number,
+		enableSpring: boolean,
+	): void {
+		if (this.localOffsetFrame !== undefined) {
+			cancelAnimationFrame(this.localOffsetFrame);
+			this.localOffsetFrame = undefined;
+		}
+
+		super.setLocalOffsetY(offsetY, force, delay, enableSpring);
+		if (force || enableSpring) return;
+
+		this.localOffsetFrame = requestAnimationFrame(() => {
+			this.localOffsetFrame = undefined;
+			this.lineTransforms.posY.setPosition(0);
+			this.rebuildStyle();
+		});
+	}
+
 	override setTransform(
 		scale: number = this.scale,
 		opacity = 1,
@@ -994,6 +1020,9 @@ export class LyricLineEl extends LyricLineBase {
 
 		if (force || !enableSpring) {
 			this.blur = Math.min(32, blur);
+			if (force) {
+				this.lineTransforms.posY.setPosition(0);
+			}
 			this.lineTransforms.scale.setPosition(scale);
 
 			this.rebuildStyle();
@@ -1022,6 +1051,7 @@ export class LyricLineEl extends LyricLineBase {
 	update(delta = 0): void {
 		if (!this.lyricPlayer.getEnableSpring()) return;
 
+		this.lineTransforms.posY.update(delta);
 		this.lineTransforms.scale.update(delta);
 		this.rebuildStyle();
 
@@ -1073,6 +1103,10 @@ export class LyricLineEl extends LyricLineBase {
 		if (roman) roman.innerHTML = "";
 	}
 	override dispose(): void {
+		if (this.localOffsetFrame !== undefined) {
+			cancelAnimationFrame(this.localOffsetFrame);
+			this.localOffsetFrame = undefined;
+		}
 		this.disposeElements();
 		this.lyricPlayer.resizeObserver.unobserve(this.element);
 		this.element.remove();

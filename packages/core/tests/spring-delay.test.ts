@@ -31,6 +31,7 @@ class TestLine extends LyricLineBase {
 	): void {
 		super.setTransform(scale, opacity, blur, force, delay);
 		if (force) {
+			this.lineTransforms.posY.setPosition(0);
 			this.lineTransforms.scale.setPosition(scale);
 		} else {
 			this.lineTransforms.scale.setTargetPosition(scale, delay);
@@ -38,6 +39,7 @@ class TestLine extends LyricLineBase {
 	}
 
 	update(delta = 0): void {
+		this.lineTransforms.posY.update(delta);
 		this.lineTransforms.scale.update(delta);
 	}
 }
@@ -90,8 +92,9 @@ describe("Spring", () => {
 		expect(spring.getCurrentPosition()).toBeLessThan(100);
 	});
 
-	it("uses split group delays for position, background slide, and line scale springs", () => {
+	it("uses split group delays for background slide and line scale springs", () => {
 		const positionGroup = new TestGroup(new TestLine(), new TestLine());
+		positionGroup.posY.setPosition(200);
 		positionGroup.setTransform(
 			100,
 			false,
@@ -105,7 +108,7 @@ describe("Spring", () => {
 			1,
 			0,
 		);
-		expectSpringWaitsForDelay(positionGroup.posY, 0.05, 0);
+		expect(positionGroup.posY.getCurrentPosition()).toBe(100);
 
 		const bgSlideGroup = new TestGroup(new TestLine(), new TestLine());
 		bgSlideGroup.isBgFirst = true;
@@ -161,6 +164,54 @@ describe("Spring", () => {
 		expectSpringWaitsForDelay(
 			bgScaleGroup.bgLine?.lineTransforms.scale ?? new Spring(0),
 			0.05,
+			100,
+		);
+	});
+
+	it("keeps wrapper anchored while main and background lines return from local Y offsets with their own delays", () => {
+		const group = new TestGroup(new TestLine(), new TestLine());
+		group.posY.setPosition(200);
+
+		group.setTransform(
+			100,
+			false,
+			{
+				positionDelay: 0.2,
+				mainLineDelay: 0.05,
+				bgLineDelay: 0.1,
+				bgSlideDelay: 0,
+			},
+			false,
+			1,
+			0,
+		);
+
+		expect(group.posY.getCurrentPosition()).toBe(100);
+		expect(group.mainLine.lineTransforms.posY.getCurrentPosition()).toBe(100);
+		expect(group.bgLine?.lineTransforms.posY.getCurrentPosition()).toBe(100);
+
+		group.mainLine.update(0.049);
+		group.bgLine?.update(0.049);
+		expect(group.mainLine.lineTransforms.posY.getCurrentPosition()).toBe(100);
+		expect(group.bgLine?.lineTransforms.posY.getCurrentPosition()).toBe(100);
+
+		group.mainLine.update(0.018);
+		group.bgLine?.update(0.018);
+		expect(group.mainLine.lineTransforms.posY.getCurrentPosition()).toBe(100);
+		expect(group.bgLine?.lineTransforms.posY.getCurrentPosition()).toBe(100);
+
+		group.mainLine.update(0.016);
+		group.bgLine?.update(0.016);
+		expect(group.mainLine.lineTransforms.posY.getCurrentPosition()).toBeLessThan(
+			100,
+		);
+		expect(group.bgLine?.lineTransforms.posY.getCurrentPosition()).toBe(100);
+
+		group.bgLine?.update(0.05);
+		expect(group.bgLine?.lineTransforms.posY.getCurrentPosition()).toBe(100);
+
+		group.bgLine?.update(0.016);
+		expect(group.bgLine?.lineTransforms.posY.getCurrentPosition()).toBeLessThan(
 			100,
 		);
 	});

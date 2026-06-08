@@ -4,6 +4,7 @@ import { Spring } from "#utils/spring.ts";
 import { LyricLineRenderMode } from "./consts.ts";
 
 interface LineTransforms {
+	posY: Spring;
 	scale: Spring;
 }
 
@@ -18,6 +19,7 @@ export abstract class LyricLineBase extends EventTarget implements Disposable {
 	protected opacity = 1;
 	protected delay = 0;
 	readonly lineTransforms: LineTransforms = {
+		posY: new Spring(0),
 		scale: new Spring(100),
 	};
 
@@ -57,6 +59,27 @@ export abstract class LyricLineBase extends EventTarget implements Disposable {
 		this.opacity = opacity;
 		this.blur = blur;
 		this.delay = delay;
+	}
+
+	setLocalOffsetY(
+		offsetY: number,
+		force: boolean,
+		delay: number,
+		enableSpring: boolean,
+	): void {
+		this.top = offsetY;
+		if (force) {
+			this.lineTransforms.posY.setPosition(0);
+			return;
+		}
+
+		if (!enableSpring) {
+			this.lineTransforms.posY.setPosition(offsetY);
+			return;
+		}
+
+		this.lineTransforms.posY.setPosition(offsetY);
+		this.lineTransforms.posY.setTargetPosition(0, delay);
 	}
 
 	rebuildElement(): void {}

@@ -63,6 +63,11 @@ export abstract class LyricLineGroupBase<
 		blur: number,
 	): void {
 		const delayPlan = normalizeGroupDelayPlan(delay);
+		const enableSpring = this.lyricPlayer.getEnableSpring();
+		const mainLineOffsetY = this.getLineLocalOffset(this.mainLine, top);
+		const bgLineOffsetY = this.bgLine
+			? this.getLineLocalOffset(this.bgLine, top)
+			: 0;
 
 		this.top = top;
 		this.delay = delayPlan.positionDelay;
@@ -70,9 +75,21 @@ export abstract class LyricLineGroupBase<
 		this.opacity = opacity;
 		this.blur = blur;
 
+		this.mainLine.setLocalOffsetY(
+			mainLineOffsetY,
+			force,
+			delayPlan.mainLineDelay,
+			enableSpring,
+		);
+		this.bgLine?.setLocalOffsetY(
+			bgLineOffsetY,
+			force,
+			delayPlan.bgLineDelay,
+			enableSpring,
+		);
+
 		this.setLineTransformations(force, delayPlan);
 
-		const enableSpring = this.lyricPlayer.getEnableSpring();
 		const alwaysPostposition =
 			this.lyricPlayer.getAlwaysPostpositionBackground();
 		const shouldBgFirst = alwaysPostposition ? false : this.isBgFirst;
@@ -87,9 +104,17 @@ export abstract class LyricLineGroupBase<
 			this.bgSlideY.setPosition(targetBgSlideY);
 			this.renderStyles();
 		} else {
-			this.posY.setTargetPosition(top, delayPlan.positionDelay);
+			this.posY.setPosition(top);
 			this.bgSlideY.setTargetPosition(targetBgSlideY, delayPlan.bgSlideDelay);
 		}
+	}
+
+	private getLineLocalOffset(line: T, targetTop: number): number {
+		return (
+			this.posY.getCurrentPosition() +
+			line.lineTransforms.posY.getCurrentPosition() -
+			targetTop
+		);
 	}
 
 	private setLineTransformations(
