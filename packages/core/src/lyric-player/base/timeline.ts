@@ -220,7 +220,9 @@ export function commitPlayerTimeState(
 			bufferedGroupExitTimes.delete(id);
 			groupsToDisable.add(id);
 		}
-		if (timelineState.bufferedGroups.size > 0) {
+		if (timelineState.hotGroups.size > 0) {
+			timelineState.scrollToIndex = Math.min(...timelineState.hotGroups);
+		} else if (timelineState.bufferedGroups.size > 0) {
 			timelineState.scrollToIndex = Math.min(...timelineState.bufferedGroups);
 		}
 		shouldLayout = true;

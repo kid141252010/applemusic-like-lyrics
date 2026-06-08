@@ -75,4 +75,42 @@ describe("lyric timeline", () => {
 		expect(timelineState.bufferedGroupExitTimes.has(0)).toBe(false);
 		expect(graceCommitResult.groupsToDisable).toEqual([0]);
 	});
+
+	it("scrolls to the first hot group when previous groups remain buffered for grace", () => {
+		const currentGroups = [group(0, 1000), group(1000, 2000)];
+		const timelineState: PlayerTimelineState = {
+			currentTime: 999,
+			lastCurrentTime: 999,
+			hotGroups: new Set([0]),
+			bufferedGroups: new Set([0]),
+			bufferedGroupExitTimes: new Map(),
+			scrollToIndex: 0,
+			isSeeking: false,
+			isPlaying: true,
+			initialLayoutFinished: true,
+		};
+
+		const stateResult = computePlayerTimeState({
+			time: 1000,
+			currentGroups,
+			timelineState,
+		});
+
+		expect([...stateResult.nextHotGroups]).toEqual([1]);
+		expect([...stateResult.addedIds]).toEqual([1]);
+		expect([...stateResult.removedHotIds]).toEqual([0]);
+
+		const commitResult = commitPlayerTimeState({
+			timelineState,
+			time: 1000,
+			currentGroups,
+			hasBottomContent: false,
+			stateResult,
+		});
+
+		expect([...timelineState.bufferedGroups]).toEqual([0, 1]);
+		expect(timelineState.bufferedGroupExitTimes.get(0)).toBe(1000);
+		expect(commitResult.groupsToEnable).toEqual([1]);
+		expect(timelineState.scrollToIndex).toBe(1);
+	});
 });

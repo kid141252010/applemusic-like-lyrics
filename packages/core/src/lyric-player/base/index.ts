@@ -13,7 +13,10 @@ import type { SpringParams } from "#utils/spring.ts";
 import { InterludeDots } from "../dom/interlude-dots.ts";
 import { BottomLineEl } from "./bottom-line.ts";
 import { LayoutAlignAnchor, MaskObsceneWordsMode } from "./consts.ts";
-import type { LyricLineGroupBase } from "./group.ts";
+import {
+	setGroupShouldKeepMounted,
+	type LyricLineGroupBase,
+} from "./group.ts";
 import {
 	computeCurrentInterlude,
 	computeGroupPresentation,
@@ -481,9 +484,9 @@ export abstract class LyricPlayerBase
 	 */
 	setCurrentTime(time: number, isSeek = false): void {
 		// 歌词行为如下：
-		// 如果当前仍有缓冲行的情况下加入新热行，则不会解除当前缓冲行，且也不会修改当前滚动位置
-		// 如果当前所有缓冲行都将被删除且没有新热行加入，则删除所有缓冲行，且也不会修改当前滚动位置
-		// 如果当前所有缓冲行都将被删除且有新热行加入，则删除所有缓冲行并加入新热行作为缓冲行，然后修改当前滚动位置
+		// 旧热行离开后会保留在缓冲区中等待退场过渡，再延迟禁用
+		// 如果同一帧加入新热行，则新热行也会进入缓冲区，滚动位置优先对齐到最靠前的新热行
+		// seeking 时会丢弃退场缓冲，仅按当前时间快照重建热行与缓冲行
 
 		time = Math.round(time);
 
@@ -669,6 +672,7 @@ export abstract class LyricPlayerBase
 				interlude,
 			});
 
+			setGroupShouldKeepMounted(group, presentation.shouldKeepMounted);
 			group.setTransform(
 				curPos,
 				force,

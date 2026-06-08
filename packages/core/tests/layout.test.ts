@@ -49,16 +49,19 @@ describe("computeGroupPresentation", () => {
 			isActive: true,
 			targetOpacity: 0.85,
 			blurLevel: 0,
+			shouldKeepMounted: true,
 		});
 		expect(bufferedOnly).toEqual({
 			isActive: false,
 			targetOpacity: 0.85,
 			blurLevel: 1,
+			shouldKeepMounted: true,
 		});
 		expect(unbuffered).toEqual({
 			isActive: false,
 			targetOpacity: 1,
 			blurLevel: 1,
+			shouldKeepMounted: false,
 		});
 	});
 });

@@ -1,4 +1,4 @@
-import { clamp } from "#utils/clamp.ts";
+import { clamp, clamp01 } from "#utils/clamp.ts";
 import type { SpringParams } from "#utils/spring.ts";
 import type { LayoutAlignAnchor } from "./consts.ts";
 import type { LyricLineGroupBase } from "./group.ts";
@@ -219,6 +219,8 @@ export interface ComputeGroupPresentationInput {
 export interface ComputeGroupPresentationResult {
 	/** 当前歌词行是否应视为活跃行 */
 	isActive: boolean;
+	/** 当前歌词行是否应保持挂载以完成入场或退场动画 */
+	shouldKeepMounted: boolean;
 	/** 当前歌词行的目标不透明度 */
 	targetOpacity: number;
 	/** 当前歌词行的目标模糊值 */
@@ -282,7 +284,49 @@ export function computeGroupPresentation(
 		targetOpacity = isNonDynamic ? 0.2 : 1;
 	}
 
-	return { isActive, targetOpacity, blurLevel };
+	return {
+		isActive,
+		shouldKeepMounted: hasBuffered,
+		targetOpacity,
+		blurLevel,
+	};
+}
+
+/** {@link computeBackgroundWrapperPresentation} 的结果类型 */
+export interface ComputeBackgroundWrapperPresentationResult {
+	/** 背景行从隐藏位置滑入到可见位置的进度 */
+	activeProgress: number;
+	/** 背景行 wrapper 是否应进入 active 布局状态 */
+	shouldBeActive: boolean;
+	/** 背景行 wrapper 是否应进入 hidden 状态 */
+	shouldBeHidden: boolean;
+	/** 背景行 wrapper 当前缩放比例 */
+	scale: number;
+}
+
+/**
+ * 根据背景行滑动位置计算 wrapper 呈现状态。
+ *
+ * 背景行还在隐藏位时不应提前切换到 active 布局，否则会在尚未滑到
+ * 正确位置时占据文档流并与主歌词重叠。
+ */
+export function computeBackgroundWrapperPresentation(
+	slideY: number,
+	hiddenSlideY: number,
+): ComputeBackgroundWrapperPresentationResult {
+	const hiddenDistance = Math.max(Math.abs(hiddenSlideY), 1);
+	const activeProgress = clamp01(1 - Math.abs(slideY) / hiddenDistance);
+	const shouldBeActive = activeProgress > 0.01;
+	const shouldBeHidden =
+		!shouldBeActive && Math.abs(slideY) >= hiddenDistance - 0.5;
+	const scale = 0.8 + activeProgress * 0.2;
+
+	return {
+		activeProgress,
+		shouldBeActive,
+		shouldBeHidden,
+		scale,
+	};
 }
 
 /** {@link computeLineBlur} 的参数类型 */

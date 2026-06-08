@@ -1,6 +1,9 @@
-import { LyricLineGroupBase } from "#lyric/base/group.ts";
+import {
+	getGroupShouldKeepMounted,
+	LyricLineGroupBase,
+} from "#lyric/base/group.ts";
+import { computeBackgroundWrapperPresentation } from "#lyric/base/layout.ts";
 import styles from "#styles/lyric-player.module.css";
-import { clamp01 } from "#utils/clamp.ts";
 import type { DomLyricPlayer } from "./index.ts";
 import type { LyricLineEl } from "./lyric-line.ts";
 
@@ -72,7 +75,7 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 	}
 
 	override update(delta: number): void {
-		if (this.isInSight) {
+		if (this.isInSight || getGroupShouldKeepMounted(this)) {
 			this.show();
 		} else {
 			this.hide();
@@ -137,23 +140,27 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 		if (this.bgWrapper) {
 			const slideY = this.bgSlideY.getCurrentPosition();
 			const slideYStr = slideY.toFixed(1);
-			const activeProgress = clamp01(1 - Math.abs(slideY) / 80);
-			const shouldWrapperActive = activeProgress > 0.01;
-
-			if (this.lastIsActive !== shouldWrapperActive) {
-				this.lastIsActive = shouldWrapperActive;
-				this.bgWrapper.classList.toggle(
-					styles.bgWrapperActive,
-					shouldWrapperActive,
-				);
-			}
-
-			const scaleStr = (0.8 + activeProgress * 0.2).toFixed(3);
-			this.bgWrapper.style.transform = `translateY(${slideYStr}%) scale(${scaleStr})`;
-
 			const alwaysPostposition =
 				this.lyricPlayer.getAlwaysPostpositionBackground();
 			const shouldBgFirst = !alwaysPostposition && this.isBgFirst;
+			const hiddenSlideY = shouldBgFirst ? 80 : -80;
+			const wrapperPresentation = computeBackgroundWrapperPresentation(
+				slideY,
+				hiddenSlideY,
+			);
+			const { activeProgress, shouldBeActive, shouldBeHidden, scale } =
+				wrapperPresentation;
+
+			if (this.lastIsActive !== shouldBeActive) {
+				this.lastIsActive = shouldBeActive;
+				this.bgWrapper.classList.toggle(
+					styles.bgWrapperActive,
+					shouldBeActive,
+				);
+			}
+
+			const scaleStr = scale.toFixed(3);
+			this.bgWrapper.style.transform = `translateY(${slideYStr}%) scale(${scaleStr})`;
 
 			if (shouldBgFirst) {
 				const bgHeight = this.bgWrapper.clientHeight || 0;
@@ -163,11 +170,10 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 				this.bgWrapper.style.marginTop = "";
 			}
 
-			const targetHiddenYStr = shouldBgFirst ? "80.0" : "-80.0";
-			const isHidden =
-				(slideYStr === targetHiddenYStr || activeProgress <= 0.01) &&
-				!shouldWrapperActive;
-			this.bgWrapper.classList.toggle(styles.bgWrapperHidden, isHidden);
+			this.bgWrapper.classList.toggle(
+				styles.bgWrapperHidden,
+				shouldBeHidden,
+			);
 		}
 	}
 
