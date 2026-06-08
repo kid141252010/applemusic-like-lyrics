@@ -1,7 +1,10 @@
 import { clamp, clamp01 } from "#utils/clamp.ts";
 import type { SpringParams } from "#utils/spring.ts";
 import type { LayoutAlignAnchor } from "./consts.ts";
-import type { LyricLineGroupBase } from "./group.ts";
+import type {
+	LyricLineGroupBase,
+	LyricLineGroupDelayPlan,
+} from "./group.ts";
 import type { PlayerTimelineState } from "./timeline.ts";
 
 /**
@@ -289,6 +292,52 @@ export function computeGroupPresentation(
 		shouldKeepMounted: hasBuffered,
 		targetOpacity,
 		blurLevel,
+	};
+}
+
+export interface ComputeGroupDelayPlanInput {
+	currentDelay: number;
+	baseDelay: number;
+	hasBackgroundLine: boolean;
+	isBgFirst: boolean;
+	shouldAdvanceDelay: boolean;
+}
+
+export interface ComputeGroupDelayPlanResult {
+	delayPlan: LyricLineGroupDelayPlan;
+	nextDelay: number;
+}
+
+/**
+ * 按歌词组内的虚拟行顺序计算延迟。
+ *
+ * 引入歌词组前，背景行不推进 delay，只有主行推进 delay。
+ * 这里保留该语义，避免主/背景行被压成同一组后丢失逐行变换节奏。
+ */
+export function computeGroupDelayPlan(
+	input: ComputeGroupDelayPlanInput,
+): ComputeGroupDelayPlanResult {
+	const {
+		currentDelay,
+		baseDelay,
+		hasBackgroundLine,
+		isBgFirst,
+		shouldAdvanceDelay,
+	} = input;
+
+	const nextDelay = shouldAdvanceDelay
+		? currentDelay + baseDelay
+		: currentDelay;
+	const bgDelay = hasBackgroundLine && !isBgFirst ? nextDelay : currentDelay;
+
+	return {
+		delayPlan: {
+			positionDelay: currentDelay,
+			mainLineDelay: currentDelay,
+			bgLineDelay: bgDelay,
+			bgSlideDelay: bgDelay,
+		},
+		nextDelay,
 	};
 }
 

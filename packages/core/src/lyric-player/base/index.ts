@@ -19,6 +19,7 @@ import {
 } from "./group.ts";
 import {
 	computeCurrentInterlude,
+	computeGroupDelayPlan,
 	computeGroupPresentation,
 	computeLineBlur,
 	computeLinePosYSpringParams,
@@ -672,20 +673,34 @@ export abstract class LyricPlayerBase
 				interlude,
 			});
 
+			const groupHeight =
+				this.lyricGroupSize.get(group)?.[1] ?? LINE_HEIGHT_FALLBACK;
+			const nextCurPos = curPos + groupHeight;
+			const shouldAdvanceDelay =
+				nextCurPos >= 0 && !this.timelineState.isSeeking;
+			const delayResult = computeGroupDelayPlan({
+				currentDelay: delay,
+				baseDelay,
+				hasBackgroundLine: !!group.bgLine,
+				isBgFirst:
+					!this.getAlwaysPostpositionBackground() && group.isBgFirst,
+				shouldAdvanceDelay,
+			});
+
 			setGroupShouldKeepMounted(group, presentation.shouldKeepMounted);
 			group.setTransform(
 				curPos,
 				force,
-				delay,
+				delayResult.delayPlan,
 				presentation.isActive,
 				presentation.targetOpacity,
 				presentation.blurLevel,
 			);
 
-			curPos += this.lyricGroupSize.get(group)?.[1] ?? LINE_HEIGHT_FALLBACK;
+			curPos = nextCurPos;
 
-			if (curPos >= 0 && !this.timelineState.isSeeking) {
-				delay += baseDelay;
+			if (shouldAdvanceDelay) {
+				delay = delayResult.nextDelay;
 				if (i >= this.timelineState.scrollToIndex) baseDelay /= 1.05;
 			}
 		});

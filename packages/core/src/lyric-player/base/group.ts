@@ -10,6 +10,13 @@ export interface LyricPlayerFlags {
 	getAlwaysPostpositionBackground(): boolean;
 }
 
+export interface LyricLineGroupDelayPlan {
+	positionDelay: number;
+	mainLineDelay: number;
+	bgLineDelay: number;
+	bgSlideDelay: number;
+}
+
 export abstract class LyricLineGroupBase<
 	T extends LyricLineBase = LyricLineBase,
 > implements Disposable
@@ -50,18 +57,20 @@ export abstract class LyricLineGroupBase<
 	setTransform(
 		top: number,
 		force: boolean,
-		delay: number,
+		delay: number | LyricLineGroupDelayPlan,
 		isActive: boolean,
 		opacity: number,
 		blur: number,
 	): void {
+		const delayPlan = normalizeGroupDelayPlan(delay);
+
 		this.top = top;
-		this.delay = delay;
+		this.delay = delayPlan.positionDelay;
 		this.isActive = isActive;
 		this.opacity = opacity;
 		this.blur = blur;
 
-		this.setLineTransformations(force, delay);
+		this.setLineTransformations(force, delayPlan);
 
 		const enableSpring = this.lyricPlayer.getEnableSpring();
 		const alwaysPostposition =
@@ -78,12 +87,15 @@ export abstract class LyricLineGroupBase<
 			this.bgSlideY.setPosition(targetBgSlideY);
 			this.renderStyles();
 		} else {
-			this.posY.setTargetPosition(top, delay);
-			this.bgSlideY.setTargetPosition(targetBgSlideY, delay);
+			this.posY.setTargetPosition(top, delayPlan.positionDelay);
+			this.bgSlideY.setTargetPosition(targetBgSlideY, delayPlan.bgSlideDelay);
 		}
 	}
 
-	private setLineTransformations(force: boolean, delay: number) {
+	private setLineTransformations(
+		force: boolean,
+		delayPlan: LyricLineGroupDelayPlan,
+	) {
 		const enableScale = this.lyricPlayer.getEnableScale();
 		const isPlaying = this.lyricPlayer.getIsPlaying();
 
@@ -96,13 +108,27 @@ export abstract class LyricLineGroupBase<
 		if (!this.isActive && isPlaying) {
 			mainScale = SCALE_ASPECT;
 		}
-		this.mainLine.setTransform(mainScale, 1, 0, force, delay, renderMode);
+		this.mainLine.setTransform(
+			mainScale,
+			1,
+			0,
+			force,
+			delayPlan.mainLineDelay,
+			renderMode,
+		);
 
 		let bgScale = 100;
 		if (!this.isActive && isPlaying) {
 			bgScale = 75;
 		}
-		this.bgLine?.setTransform(bgScale, 1, 0, force, delay, renderMode);
+		this.bgLine?.setTransform(
+			bgScale,
+			1,
+			0,
+			force,
+			delayPlan.bgLineDelay,
+			renderMode,
+		);
 	}
 
 	protected abstract renderStyles(): void;
@@ -139,6 +165,20 @@ export abstract class LyricLineGroupBase<
 		this.mainLine.dispose();
 		this.bgLine?.dispose();
 	}
+}
+
+function normalizeGroupDelayPlan(
+	delay: number | LyricLineGroupDelayPlan,
+): LyricLineGroupDelayPlan {
+	if (typeof delay === "number") {
+		return {
+			positionDelay: delay,
+			mainLineDelay: delay,
+			bgLineDelay: delay,
+			bgSlideDelay: delay,
+		};
+	}
+	return delay;
 }
 
 const groupShouldKeepMounted = new WeakMap<LyricLineGroupBase, boolean>();
