@@ -134,7 +134,7 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 		this.element.style.filter = `blur(${Math.min(5, this.blur)}px)`;
 
 		if (!this.lyricPlayer.getEnableSpring()) {
-			this.element.style.transitionDelay = `${(this.delay * 1000) | 0}ms`;
+			this.element.style.transitionDelay = "0ms";
 		}
 
 		if (this.bgWrapper) {

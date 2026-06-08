@@ -93,4 +93,41 @@ describe("computeGroupDelayPlan", () => {
 		expect(nextMain.delayPlan.mainLineDelay).toBeCloseTo(0.1);
 		expect(nextMain.nextDelay).toBeCloseTo(0.15);
 	});
+
+	it("keeps post-positioned background lines on the next main line delay step", () => {
+		const first = computeGroupDelayPlan({
+			currentDelay: 0,
+			baseDelay: 0.05,
+			hasBackgroundLine: true,
+			isBgFirst: false,
+			shouldAdvanceDelay: true,
+		});
+		const second = computeGroupDelayPlan({
+			currentDelay: first.nextDelay,
+			baseDelay: 0.05,
+			hasBackgroundLine: true,
+			isBgFirst: false,
+			shouldAdvanceDelay: true,
+		});
+		const third = computeGroupDelayPlan({
+			currentDelay: second.nextDelay,
+			baseDelay: 0.05,
+			hasBackgroundLine: true,
+			isBgFirst: false,
+			shouldAdvanceDelay: true,
+		});
+
+		const visualLineDelays = [
+			first.delayPlan.mainLineDelay,
+			first.delayPlan.bgLineDelay,
+			second.delayPlan.mainLineDelay,
+			second.delayPlan.bgLineDelay,
+			third.delayPlan.mainLineDelay,
+			third.delayPlan.bgLineDelay,
+		];
+
+		for (const [i, delay] of visualLineDelays.entries()) {
+			expect(delay).toBeCloseTo([0, 0.05, 0.05, 0.1, 0.1, 0.15][i]);
+		}
+	});
 });

@@ -1,5 +1,6 @@
-import { eqSet } from "#utils/eq-set.ts";
 import type { LyricLineGroupBase } from "./group.ts";
+
+export const POST_ACTIVE_GROUP_GRACE_MS = 300;
 
 /**
  * 播放时间线状态。
@@ -15,6 +16,8 @@ export interface PlayerTimelineState {
 	hotGroups: Set<number>;
 	/** 缓冲组：UI 上还保持激活表现的组索引，通常包含热组，和刚结束仍在过渡中的组 */
 	bufferedGroups: Set<number>;
+	/** 已离开热组、但仍保留在缓冲区中等待视觉退场的组及其离开时间 */
+	bufferedGroupExitTimes: Map<number, number>;
 	/** 当前应滚动对齐到的歌词组索引 */
 	scrollToIndex: number;
 	/** 是否正在拖拽进度条。若是，更新时丢弃缓冲行，并根据当前时间直接计算热行 */
@@ -56,7 +59,7 @@ export function computePlayerTimeState(
 	const {
 		time,
 		currentGroups,
-		timelineState: { hotGroups, bufferedGroups },
+		timelineState: { hotGroups, bufferedGroups, bufferedGroupExitTimes },
 	} = input;
 
 	const nextHotGroups = new Set(hotGroups);
@@ -88,7 +91,13 @@ export function computePlayerTimeState(
 
 	for (const id of bufferedGroups) {
 		if (!nextHotGroups.has(id)) {
-			removedBufferedIds.add(id);
+			const exitTime = bufferedGroupExitTimes.get(id);
+			if (
+				exitTime !== undefined &&
+				time - exitTime >= POST_ACTIVE_GROUP_GRACE_MS
+			) {
+				removedBufferedIds.add(id);
+			}
 		}
 	}
 
@@ -165,6 +174,7 @@ export function commitPlayerTimeState(
 		input;
 	const { addedIds, removedHotIds, removedBufferedIds } = stateResult;
 	const { isSeeking } = timelineState;
+	const previousBufferedGroups = new Set(timelineState.bufferedGroups);
 
 	timelineState.currentTime = time;
 	timelineState.hotGroups = stateResult.nextHotGroups;
@@ -173,28 +183,60 @@ export function commitPlayerTimeState(
 	let shouldResetScroll = false;
 	const groupsToEnable: number[] = [];
 	const groupsToDisable = new Set<number>();
+	const { bufferedGroupExitTimes } = timelineState;
+
+	const getRemovedHotGroupExitTime = (id: number) => {
+		const group = currentGroups[id];
+		if (!group) return time;
+		if (time >= group.endTime) return group.endTime;
+		return time;
+	};
+
+	const disableBufferedGroup = (id: number) => {
+		timelineState.bufferedGroups.delete(id);
+		bufferedGroupExitTimes.delete(id);
+		groupsToDisable.add(id);
+	};
+
+	const markRemovedHotGroupsForGrace = () => {
+		for (const id of removedHotIds) {
+			if (
+				timelineState.bufferedGroups.has(id) &&
+				!timelineState.hotGroups.has(id)
+			) {
+				const exitTime = getRemovedHotGroupExitTime(id);
+				bufferedGroupExitTimes.set(id, exitTime);
+				if (time - exitTime >= POST_ACTIVE_GROUP_GRACE_MS) {
+					disableBufferedGroup(id);
+				}
+			}
+		}
+	};
 
 	if (isSeeking) {
 		timelineState.bufferedGroups = new Set([...timelineState.hotGroups]);
+		bufferedGroupExitTimes.clear();
 		timelineState.scrollToIndex = pickScrollToIndexForSeek(
 			time,
 			currentGroups,
 			timelineState.bufferedGroups,
 		);
-		for (const id of removedHotIds) groupsToDisable.add(id);
+		for (const id of previousBufferedGroups) {
+			if (!timelineState.hotGroups.has(id)) groupsToDisable.add(id);
+		}
 		for (const id of timelineState.hotGroups) groupsToEnable.push(id);
-		for (const id of removedBufferedIds) groupsToDisable.add(id);
 
 		shouldResetScroll = true;
 		shouldLayout = true;
 	} else if (addedIds.size > 0) {
 		for (const id of addedIds) {
 			timelineState.bufferedGroups.add(id);
+			bufferedGroupExitTimes.delete(id);
 			groupsToEnable.push(id);
 		}
+		markRemovedHotGroupsForGrace();
 		for (const id of removedBufferedIds) {
-			timelineState.bufferedGroups.delete(id);
-			groupsToDisable.add(id);
+			disableBufferedGroup(id);
 		}
 		if (timelineState.hotGroups.size > 0) {
 			timelineState.scrollToIndex = Math.min(...timelineState.hotGroups);
@@ -202,16 +244,24 @@ export function commitPlayerTimeState(
 			timelineState.scrollToIndex = Math.min(...timelineState.bufferedGroups);
 		}
 		shouldLayout = true;
-	} else if (
-		removedBufferedIds.size > 0 &&
-		eqSet(removedBufferedIds, timelineState.bufferedGroups)
-	) {
-		for (const id of timelineState.bufferedGroups) {
-			if (timelineState.hotGroups.has(id)) continue;
-			timelineState.bufferedGroups.delete(id);
-			groupsToDisable.add(id);
+	} else {
+		markRemovedHotGroupsForGrace();
+		for (const id of removedBufferedIds) {
+			disableBufferedGroup(id);
 		}
-		shouldLayout = true;
+		shouldLayout = removedHotIds.size > 0 || removedBufferedIds.size > 0;
+	}
+
+	if (
+		!isSeeking &&
+		timelineState.hotGroups.size > 0 &&
+		(addedIds.size > 0 || removedHotIds.size > 0)
+	) {
+		const nextScrollToIndex = Math.min(...timelineState.hotGroups);
+		if (timelineState.scrollToIndex !== nextScrollToIndex) {
+			timelineState.scrollToIndex = nextScrollToIndex;
+			shouldLayout = true;
+		}
 	}
 
 	if (timelineState.bufferedGroups.size === 0 && currentGroups.length > 0) {
