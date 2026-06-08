@@ -365,7 +365,7 @@ export function computeBackgroundWrapperPresentation(
 ): ComputeBackgroundWrapperPresentationResult {
 	const hiddenDistance = Math.max(Math.abs(hiddenSlideY), 1);
 	const activeProgress = clamp01(1 - Math.abs(slideY) / hiddenDistance);
-	const shouldBeActive = activeProgress > 0.01;
+	const shouldBeActive = activeProgress >= 0.75;
 	const shouldBeHidden =
 		!shouldBeActive && Math.abs(slideY) >= hiddenDistance - 0.5;
 	const scale = 0.8 + activeProgress * 0.2;

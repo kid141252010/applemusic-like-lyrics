@@ -177,7 +177,7 @@
 	pointer-events: auto;
 	opacity: 0;
 	transform-origin: left top;
-	transition: opacity 0.3s ease;
+	transition: opacity 0.18s ease;
 }
 
 .bgWrapperTop {

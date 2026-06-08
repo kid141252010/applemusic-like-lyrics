@@ -42,8 +42,18 @@ describe("computeBackgroundWrapperPresentation", () => {
 
 		const halfway = compute(40, 80);
 		expect(halfway.activeProgress).toBeCloseTo(0.5);
-		expect(halfway.shouldBeActive).toBe(true);
+		expect(halfway.shouldBeActive).toBe(false);
 		expect(halfway.shouldBeHidden).toBe(false);
 		expect(halfway.scale).toBeCloseTo(0.9);
+
+		const nearlyReady = compute(20.8, 80);
+		expect(nearlyReady.activeProgress).toBeCloseTo(0.74);
+		expect(nearlyReady.shouldBeActive).toBe(false);
+		expect(nearlyReady.shouldBeHidden).toBe(false);
+
+		const ready = compute(20, 80);
+		expect(ready.activeProgress).toBeCloseTo(0.75);
+		expect(ready.shouldBeActive).toBe(true);
+		expect(ready.shouldBeHidden).toBe(false);
 	});
 });
