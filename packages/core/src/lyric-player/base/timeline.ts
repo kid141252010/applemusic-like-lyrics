@@ -120,6 +120,26 @@ export function pickScrollToIndexForSeek(
 	return foundIndex === -1 ? currentGroups.length : foundIndex;
 }
 
+function pickScrollToIndexFromTimelineState(
+	timelineState: PlayerTimelineState,
+): number {
+	if (timelineState.hotGroups.size > 0) {
+		return Math.min(...timelineState.hotGroups);
+	}
+	if (timelineState.bufferedGroups.size > 0) {
+		return Math.min(...timelineState.bufferedGroups);
+	}
+	return timelineState.scrollToIndex;
+}
+
+function syncScrollToIndex(timelineState: PlayerTimelineState): boolean {
+	const nextScrollToIndex = pickScrollToIndexFromTimelineState(timelineState);
+	if (timelineState.scrollToIndex === nextScrollToIndex) return false;
+
+	timelineState.scrollToIndex = nextScrollToIndex;
+	return true;
+}
+
 /**
  * {@link commitPlayerTimeState} 的参数类型。
  *
@@ -196,9 +216,7 @@ export function commitPlayerTimeState(
 			timelineState.bufferedGroups.delete(id);
 			groupsToDisable.add(id);
 		}
-		if (timelineState.bufferedGroups.size > 0) {
-			timelineState.scrollToIndex = Math.min(...timelineState.bufferedGroups);
-		}
+		syncScrollToIndex(timelineState);
 		shouldLayout = true;
 	} else if (
 		removedBufferedIds.size > 0 &&
@@ -209,6 +227,11 @@ export function commitPlayerTimeState(
 			timelineState.bufferedGroups.delete(id);
 			groupsToDisable.add(id);
 		}
+		syncScrollToIndex(timelineState);
+		shouldLayout = true;
+	} else if (removedHotIds.size > 0) {
+		for (const id of removedHotIds) groupsToDisable.add(id);
+		syncScrollToIndex(timelineState);
 		shouldLayout = true;
 	}
 

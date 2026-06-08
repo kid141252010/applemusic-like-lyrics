@@ -72,7 +72,7 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 	}
 
 	override update(delta: number): void {
-		if (this.isInSight) {
+		if (this.isInSight || this.shouldKeepMounted) {
 			this.show();
 		} else {
 			this.hide();

@@ -619,12 +619,16 @@ export abstract class LyricPlayerBase
 			}
 		}
 
-		const latestIndex = Math.max(...this.timelineState.bufferedGroups);
+		const latestIndex =
+			this.timelineState.bufferedGroups.size > 0
+				? Math.max(...this.timelineState.bufferedGroups)
+				: this.timelineState.scrollToIndex;
 		let delay = 0;
 		let baseDelay = sync ? 0 : 0.05;
 		let setDots = false;
 
 		this.currentLyricGroups.forEach((group, i) => {
+			const hasHot = this.timelineState.hotGroups.has(i);
 			const hasBuffered = this.timelineState.bufferedGroups.has(i);
 
 			const shouldShowDots = interlude && i === interlude.anchorLineIndex + 1;
@@ -655,6 +659,7 @@ export abstract class LyricPlayerBase
 				groupIndex: i,
 				scrollToIndex: this.timelineState.scrollToIndex,
 				latestIndex,
+				hasHot,
 				hasBuffered,
 				hidePassedLines: this.hidePassedLines,
 				isPlaying: this.timelineState.isPlaying,
@@ -672,6 +677,7 @@ export abstract class LyricPlayerBase
 				presentation.isActive,
 				presentation.targetOpacity,
 				presentation.blurLevel,
+				presentation.shouldKeepMounted,
 			);
 
 			curPos += this.lyricGroupSize.get(group)?.[1] ?? LINE_HEIGHT_FALLBACK;

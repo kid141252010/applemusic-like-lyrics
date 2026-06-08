@@ -22,6 +22,7 @@ export abstract class LyricLineGroupBase<
 	public delay = 0;
 
 	public isActive = false;
+	public shouldKeepMounted = false;
 	public opacity = 1;
 	public blur = 0;
 
@@ -54,10 +55,12 @@ export abstract class LyricLineGroupBase<
 		isActive: boolean,
 		opacity: number,
 		blur: number,
+		shouldKeepMounted: boolean = this.shouldKeepMounted,
 	): void {
 		this.top = top;
 		this.delay = delay;
 		this.isActive = isActive;
+		this.shouldKeepMounted = shouldKeepMounted;
 		this.opacity = opacity;
 		this.blur = blur;
 
