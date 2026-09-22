@@ -9,6 +9,7 @@ export interface LyricPlayerFlags {
 	getEnableScale(): boolean;
 	getIsPlaying(): boolean;
 	getAlwaysPostpositionBackground(): boolean;
+	getCurrentTime(): number;
 }
 
 export abstract class LyricLineGroupBase<
@@ -23,6 +24,8 @@ export abstract class LyricLineGroupBase<
 	public delay: Duration = Duration.ZERO;
 
 	public isActive = false;
+	public isMainActive = false;
+	public isBgActive = false;
 	public opacity = 1;
 	public blur = 0;
 
@@ -36,9 +39,10 @@ export abstract class LyricLineGroupBase<
 	) {}
 
 	get startTime(): MediaTime {
-		// 优化歌词时 `syncMainAndBackgroundLines` 已经把时间同步好了，直接读取主歌词的即可
-		// 要是用户关掉了这个优化，我们认为在这种情况下主歌词和背景人声显示不同步是符合用户预期的
-		return MediaTime.fromMillis(this.mainLine.getLine().startTime);
+		const mainStart = this.mainLine.getLine().startTime;
+		if (!this.bgLine) return MediaTime.fromMillis(mainStart);
+		const bgStart = this.bgLine.getLine().startTime;
+		return MediaTime.fromMillis(Math.min(mainStart, bgStart));
 	}
 
 	get endTime(): MediaTime {
@@ -54,6 +58,56 @@ export abstract class LyricLineGroupBase<
 
 	abstract getElement(): Element;
 
+	/**
+	 * 根据当前媒体播放时间独立调度主行和背景行的激活
+	 */
+	public updateLineActivation(time: number, shouldPlay?: boolean): void {
+		if (!this.isActive) return;
+
+		let changed = false;
+
+		// 1. 伴唱行激活调度
+		if (this.bgLine) {
+			const bgStart = this.bgLine.getLine().startTime;
+			if (time >= bgStart && !this.isBgActive) {
+				this.isBgActive = true;
+				this.bgLine.enable(time, shouldPlay);
+				changed = true;
+			}
+		}
+
+		// 2. 主歌词行激活调度：只有当时间真正到达主行开唱点才激活
+		const mainStart = this.mainLine.getLine().startTime;
+		if (time >= mainStart && !this.isMainActive) {
+			this.isMainActive = true;
+			this.mainLine.enable(time, shouldPlay);
+			changed = true;
+		}
+
+		if (changed) {
+			this.setLineTransformations(this.delay);
+			this.updateBgSlideY();
+			this.isUiDirty = true;
+		}
+	}
+
+	private updateBgSlideY(immediate = false): void {
+		const alwaysPostposition =
+			this.lyricPlayer.getAlwaysPostpositionBackground();
+		const shouldBgFirst = alwaysPostposition ? false : this.isBgFirst;
+		const hiddenSlideY = shouldBgFirst ? 80 : -80;
+
+		const isPlaying = this.lyricPlayer.getIsPlaying();
+		const shouldBgShow = this.isBgActive || !isPlaying;
+		const targetBgSlideY = shouldBgShow ? 0 : hiddenSlideY;
+
+		if (immediate || !this.lyricPlayer.getEnableSpring()) {
+			this.bgSlideY.setPosition(targetBgSlideY);
+		} else {
+			this.bgSlideY.setTargetPosition(targetBgSlideY, this.delay);
+		}
+	}
+
 	setTransform(
 		top: number,
 		immediate: boolean,
@@ -68,25 +122,26 @@ export abstract class LyricLineGroupBase<
 		this.opacity = opacity;
 		this.blur = blur;
 
+		if (isActive) {
+			this.updateLineActivation(
+				this.lyricPlayer.getCurrentTime(),
+				this.lyricPlayer.getIsPlaying(),
+			);
+		} else {
+			this.isMainActive = false;
+			this.isBgActive = false;
+		}
+
 		this.setLineTransformations(delay);
 
 		const enableSpring = this.lyricPlayer.getEnableSpring();
-		const alwaysPostposition =
-			this.lyricPlayer.getAlwaysPostpositionBackground();
-		const shouldBgFirst = alwaysPostposition ? false : this.isBgFirst;
-		const hiddenSlideY = shouldBgFirst ? 80 : -80;
-
-		const isPlaying = this.lyricPlayer.getIsPlaying();
-		const targetBgSlideY = isActive || !isPlaying ? 0 : hiddenSlideY;
-
 		if (immediate || !enableSpring) {
 			this.posY.setPosition(top);
-			this.bgSlideY.setPosition(targetBgSlideY);
 		} else {
 			this.posY.setTargetPosition(top, delay);
-			this.bgSlideY.setTargetPosition(targetBgSlideY, delay);
 		}
 
+		this.updateBgSlideY(immediate);
 		this.isUiDirty = true;
 	}
 
@@ -94,23 +149,27 @@ export abstract class LyricLineGroupBase<
 		const enableScale = this.lyricPlayer.getEnableScale();
 		const isPlaying = this.lyricPlayer.getIsPlaying();
 
-		const renderMode = this.isActive
+		const mainRenderMode = this.isMainActive
 			? LyricLineRenderMode.GRADIENT
 			: LyricLineRenderMode.SOLID;
 
 		const SCALE_ASPECT = enableScale ? 97 : 100;
 		let mainScale = 100;
-		if (!this.isActive && isPlaying) {
+		if (!this.isMainActive && isPlaying) {
 			mainScale = SCALE_ASPECT;
 		}
 
-		this.mainLine.setTransform(mainScale, 1, 0, delay, renderMode);
+		this.mainLine.setTransform(mainScale, 1, 0, delay, mainRenderMode);
 
 		let bgScale = 100;
-		if (!this.isActive && isPlaying) {
+		if (!this.isBgActive && isPlaying) {
 			bgScale = 75;
 		}
-		this.bgLine?.setTransform(bgScale, 1, 0, delay, renderMode);
+		const bgRenderMode = this.isBgActive
+			? LyricLineRenderMode.GRADIENT
+			: LyricLineRenderMode.SOLID;
+
+		this.bgLine?.setTransform(bgScale, 1, 0, delay, bgRenderMode);
 	}
 
 	protected abstract renderStyles(): void;
@@ -124,6 +183,16 @@ export abstract class LyricLineGroupBase<
 	abstract isInRenderRange(includeOverscan?: boolean): boolean;
 
 	update(delta: Duration = Duration.ZERO): void {
+		if (
+			this.isActive &&
+			(!this.isMainActive || (this.bgLine && !this.isBgActive))
+		) {
+			this.updateLineActivation(
+				this.lyricPlayer.getCurrentTime(),
+				this.lyricPlayer.getIsPlaying(),
+			);
+		}
+
 		if (this.lyricPlayer.getEnableSpring()) {
 			const posMoving = !this.posY.arrived();
 			const bgMoving = !this.bgSlideY.arrived();
@@ -154,14 +223,23 @@ export abstract class LyricLineGroupBase<
 		this.bgLine?.rebuildElement();
 	}
 
-	enable(time?: number, shouldPlay?: boolean): void {
-		this.mainLine.enable(time, shouldPlay);
-		this.bgLine?.enable(time, shouldPlay);
+	enable(
+		time: number = this.lyricPlayer.getCurrentTime(),
+		shouldPlay: boolean = this.lyricPlayer.getIsPlaying(),
+	): void {
+		this.isActive = true;
+		this.updateLineActivation(time, shouldPlay);
 	}
 
 	disable(): void {
+		this.isActive = false;
+		this.isMainActive = false;
+		this.isBgActive = false;
 		this.mainLine.disable();
 		this.bgLine?.disable();
+		this.updateBgSlideY();
+		this.setLineTransformations(this.delay);
+		this.isUiDirty = true;
 	}
 
 	dispose(): void {

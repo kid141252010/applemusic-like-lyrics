@@ -8,7 +8,7 @@ import type { LyricLineEl } from "./lyric-line.ts";
 export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 	public element: HTMLElement;
 	public bgWrapper?: HTMLElement;
-	private lastIsActive?: boolean;
+	private lastIsBgActive?: boolean;
 
 	private lastBgHeight = 0;
 	private lastBgIsHidden?: boolean;
@@ -186,9 +186,12 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 		}
 
 		if (this.bgWrapper) {
-			if (this.lastIsActive !== this.isActive) {
-				this.lastIsActive = this.isActive;
-				this.bgWrapper.classList.toggle(styles.bgWrapperActive, this.isActive);
+			if (this.lastIsBgActive !== this.isBgActive) {
+				this.lastIsBgActive = this.isBgActive;
+				this.bgWrapper.classList.toggle(
+					styles.bgWrapperActive,
+					this.isBgActive,
+				);
 			}
 
 			const bgStyle = this.bgWrapper.style;
@@ -214,7 +217,7 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 
 				const targetHiddenY = shouldBgFirst ? 80 : -80;
 				const isHidden =
-					Math.abs(slideY - targetHiddenY) < 0.1 && !this.isActive;
+					Math.abs(slideY - targetHiddenY) < 0.1 && !this.isBgActive;
 
 				if (this.lastBgIsHidden !== isHidden) {
 					this.lastBgIsHidden = isHidden;

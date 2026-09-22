@@ -79,20 +79,13 @@ function syncMainAndBackgroundLines(lines: LyricLine[]) {
 				(w) => w.word.trim().length > 0,
 			);
 
-			const finalStart = Math.min(
-				line.startTime,
-				nextLine.startTime,
-				...allWords.map((w) => w.startTime),
-			);
 			const finalEnd = Math.max(
 				line.endTime,
 				nextLine.endTime,
 				...allWords.map((w) => w.endTime),
 			);
 
-			line.startTime = finalStart;
 			line.endTime = finalEnd;
-			nextLine.startTime = finalStart;
 			nextLine.endTime = finalEnd;
 		}
 	}
@@ -116,9 +109,11 @@ function sortLyricLines(lines: LyricLine[]) {
 			groupLines.push(lines[++i]);
 		}
 
+		const groupStartTime = Math.min(...groupLines.map((l) => l.startTime));
+
 		groups.push({
 			lines: groupLines,
-			startTime: mainLine.startTime,
+			startTime: groupStartTime,
 			originalIndex: groups.length,
 		});
 	}
@@ -218,69 +213,80 @@ function tryAdvanceStartTime(lines: LyricLine[], syncBackgroundLines: boolean) {
 		const originalStartTime = line.startTime;
 		const originalEndTime = line.endTime;
 
-		let targetAdvanceAmount = 0;
-		let safeBoundary = 0;
+		const calculateAdvance = (startTime: number) => {
+			let targetAdvanceAmount = defaultAdvanceAmount;
+			let safeBoundary = 0;
 
-		if (hasPrevLine) {
-			const originallyHadGap = originalStartTime >= prevLineEndTime;
-
-			if (originallyHadGap) {
-				// 与上一行有空隙或严丝合缝，最多提前 600ms，不超过上一行的结束时间
-				targetAdvanceAmount = defaultAdvanceAmount;
-				safeBoundary = prevMainGroupEndTime;
-			} else {
-				// 与上一行有重叠，尝试提前 400ms，重叠时长不足则提前重叠时长的 70%
-				const overlapDuration = prevLineEndTime - originalStartTime;
-
-				if (overlapDuration < fallbackAdvanceAmount) {
-					targetAdvanceAmount = overlapDuration * fallbackAdvanceRatio;
+			if (hasPrevLine) {
+				if (startTime >= prevLineEndTime) {
+					// 与上一行有空隙或严丝合缝，最多提前 600ms，不超过上一行的结束时间
+					safeBoundary = prevMainGroupEndTime;
 				} else {
-					targetAdvanceAmount = fallbackAdvanceAmount;
+					// 与上一行有重叠，尝试提前 400ms，重叠时长不足则提前重叠时长的 70%
+					const overlapDuration = prevLineEndTime - startTime;
+					targetAdvanceAmount =
+						overlapDuration < fallbackAdvanceAmount
+							? overlapDuration * fallbackAdvanceRatio
+							: fallbackAdvanceAmount;
+					// 使用上一条主歌词的时间，不能依赖可能独立计时的背景行
+					safeBoundary = prevLineStartTime;
 				}
-				// 使用上一条主歌词的时间，不能依赖可能独立计时的背景行
-				safeBoundary = prevLineStartTime;
 			}
-		} else {
-			// 第一行歌词
-			targetAdvanceAmount = defaultAdvanceAmount;
-			safeBoundary = 0;
-		}
 
-		const targetTime = line.startTime - targetAdvanceAmount;
-		const newStartTime = Math.max(safeBoundary, targetTime);
+			const targetTime = startTime - targetAdvanceAmount;
+			return Math.max(safeBoundary, targetTime);
+		};
 
+		const newStartTime = calculateAdvance(line.startTime);
 		if (newStartTime < line.startTime) {
 			line.startTime = newStartTime;
 		}
 
 		// 启用时间同步时，给背景人声同步开始时间
 		const nextLine = lines[i + 1];
-		if (syncBackgroundLines && nextLine?.isBG) {
-			nextLine.startTime = line.startTime;
+		if (nextLine?.isBG) {
+			const isPreBg = nextLine.startTime < originalStartTime;
+			if (isPreBg) {
+				// 前置背景词以自身时间为基准向前推算提前量，禁止被主行开始时间直接覆盖
+				const newBgStartTime = calculateAdvance(nextLine.startTime);
+				if (newBgStartTime < nextLine.startTime) {
+					nextLine.startTime = newBgStartTime;
+				}
+			} else if (syncBackgroundLines) {
+				nextLine.startTime = line.startTime;
+			}
 		}
 
 		// 为连续重叠的歌词行都加到一个组里，以便接下来不重叠的歌词行看到的是整个组的时间边界而不仅限于上一行的边界
+		const groupEffectiveStartTime =
+			nextLine?.isBG && nextLine.startTime < originalStartTime
+				? nextLine.startTime
+				: originalStartTime;
+
 		if (hasPrevLine) {
 			const overlapsPrevGroup =
-				originalStartTime < prevMainGroupEndTime &&
+				groupEffectiveStartTime < prevMainGroupEndTime &&
 				originalEndTime > prevMainGroupStartTime;
 
 			if (overlapsPrevGroup) {
 				prevMainGroupStartTime = Math.min(
 					prevMainGroupStartTime,
-					originalStartTime,
+					groupEffectiveStartTime,
 				);
 				prevMainGroupEndTime = Math.max(prevMainGroupEndTime, originalEndTime);
 			} else {
-				prevMainGroupStartTime = originalStartTime;
+				prevMainGroupStartTime = groupEffectiveStartTime;
 				prevMainGroupEndTime = originalEndTime;
 			}
 		} else {
-			prevMainGroupStartTime = originalStartTime;
+			prevMainGroupStartTime = groupEffectiveStartTime;
 			prevMainGroupEndTime = originalEndTime;
 		}
 
-		prevLineStartTime = line.startTime;
+		prevLineStartTime =
+			nextLine?.isBG && nextLine.startTime < line.startTime
+				? nextLine.startTime
+				: line.startTime;
 		prevLineEndTime = originalEndTime;
 		hasPrevLine = true;
 	}

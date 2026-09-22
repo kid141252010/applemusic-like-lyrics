@@ -155,8 +155,8 @@ describe("optimizeLyricLines", () => {
 			syncMainAndBackgroundLines: true,
 		});
 
-		expect(mainLine).toMatchObject({ startTime: 900, endTime: 2300 });
-		expect(backgroundLine).toMatchObject({ startTime: 900, endTime: 2300 });
+		expect(mainLine).toMatchObject({ startTime: 1000, endTime: 2300 });
+		expect(backgroundLine).toMatchObject({ startTime: 1100, endTime: 2300 });
 	});
 
 	it("synchronizes a main/background pair without nonblank words", () => {
@@ -170,15 +170,15 @@ describe("optimizeLyricLines", () => {
 			syncMainAndBackgroundLines: true,
 		});
 
-		expect(mainLine).toMatchObject({ startTime: 800, endTime: 2200 });
+		expect(mainLine).toMatchObject({ startTime: 1000, endTime: 2200 });
 		expect(backgroundLine).toMatchObject({ startTime: 800, endTime: 2200 });
 	});
 
 	it("sorts main lines without separating their background lines", () => {
 		const laterMain = createLine(3000, 4000);
-		const laterBackground = createLine(500, 4500, { isBG: true });
+		const laterBackground = createLine(3500, 4500, { isBG: true });
 		const earlierMain = createLine(1000, 2000);
-		const earlierBackground = createLine(4000, 5000, { isBG: true });
+		const earlierBackground = createLine(1500, 2500, { isBG: true });
 		const lines = [laterMain, laterBackground, earlierMain, earlierBackground];
 
 		optimizeWith(lines);
@@ -189,6 +189,17 @@ describe("optimizeLyricLines", () => {
 			laterMain,
 			laterBackground,
 		]);
+	});
+
+	it("sorts lyric line groups by the earliest start time within the group (including pre-BG)", () => {
+		const laterMainWithPreBg = createLine(3000, 4000);
+		const preBackground = createLine(500, 4500, { isBG: true });
+		const earlierMain = createLine(1000, 2000);
+		const lines = [laterMainWithPreBg, preBackground, earlierMain];
+
+		optimizeWith(lines);
+
+		expect(lines).toEqual([laterMainWithPreBg, preBackground, earlierMain]);
 	});
 
 	it("keeps the original group order when main lines start together", () => {
