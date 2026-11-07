@@ -19,3 +19,15 @@ it("discards leading spacing at the selected line start", () => {
 		breaks(children.map((child) => ({ ...child, leadingSpacing: 0 }))),
 	).toEqual([1, 2]);
 });
+
+it("在对不起之前断行，避免切开第一九四三句", () => {
+	const text = "说了第一九四三句对不起之后";
+	const children = [...text].map((text) => ({
+		width: 1,
+		text,
+		isSpace: false,
+	}));
+	const segmenter = new Intl.Segmenter(undefined, { granularity: "word" });
+
+	expect(calcBalancedBreaks(children, 8, text, segmenter)).toEqual([8]);
+});
