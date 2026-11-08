@@ -1,6 +1,7 @@
 import styles from "#styles/lyric-player.module.css";
 import { clampPositive } from "./clamp.ts";
 import { type ChildNodeInfo, calcBalancedBreaks } from "./lyric-line-break.ts";
+import type { WordSegmenter } from "./segmenter.ts";
 import { getTextAutospaceOffsets } from "./text-autospace.ts";
 
 /** Render spacing without adding characters or timed lyric words. */
@@ -61,6 +62,7 @@ interface LineBalanceAdapter {
 export class LineBalancer {
 	private isBalancing = false;
 	private lastBalancedContainerWidth = -1;
+	private lastWordSegmenter: WordSegmenter | null = null;
 
 	constructor(
 		private mainElement: HTMLDivElement,
@@ -70,10 +72,14 @@ export class LineBalancer {
 	public balanceLineBreaks(
 		isNonDynamic: boolean,
 		hasSplittedWords: boolean,
-		wordSegmenter: Intl.Segmenter,
+		wordSegmenter: WordSegmenter,
 		mainStyle?: CSSStyleDeclaration,
 	): void {
 		if (this.isBalancing || !this.mainElement) return;
+		if (wordSegmenter !== this.lastWordSegmenter) {
+			this.reset();
+			this.lastWordSegmenter = wordSegmenter;
+		}
 
 		const computedStyle = mainStyle ?? getComputedStyle(this.mainElement);
 		const containerWidth = this.computeContainerWidth(computedStyle);
@@ -121,7 +127,7 @@ export class LineBalancer {
 	private executeLineBalance(
 		containerWidth: number,
 		adapter: LineBalanceAdapter,
-		wordSegmenter: Intl.Segmenter,
+		wordSegmenter: WordSegmenter,
 	): void {
 		const existingBrs = this.mainElement.querySelectorAll("br");
 		if (
@@ -211,7 +217,7 @@ export class LineBalancer {
 
 	private balanceDynamicLineBreaks(
 		containerWidth: number,
-		wordSegmenter: Intl.Segmenter,
+		wordSegmenter: WordSegmenter,
 	): void {
 		const infoToNode: Node[] = [];
 
@@ -289,7 +295,7 @@ export class LineBalancer {
 	private balanceNonDynamicLineBreaks(
 		containerWidth: number,
 		computedStyle: CSSStyleDeclaration,
-		wordSegmenter: Intl.Segmenter,
+		wordSegmenter: WordSegmenter,
 	): void {
 		const fullText = this.mainElement.textContent ?? "";
 		if (fullText.trim().length === 0) return;

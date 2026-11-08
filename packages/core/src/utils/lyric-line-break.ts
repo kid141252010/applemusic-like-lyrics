@@ -1,4 +1,5 @@
 import { isCJK } from "./is-cjk.ts";
+import type { WordSegmenter } from "./segmenter.ts";
 
 export interface ChildNodeInfo {
 	width: number;
@@ -43,14 +44,14 @@ const PUNCTUATION_REGEX = /[,;:!?，。；：！？、）】》」』’”)[\]}
  * @param children 子节点信息
  * @param containerWidth 容器可用内容宽度
  * @param fullText 完整的行文本
- * @param segmenter 预创建的 Intl.Segmenter 分词器
+ * @param segmenter 预创建的分词器
  * @returns 需要在其前面插入 `<br>` 的子节点索引数组，升序
  */
 export function calcBalancedBreaks(
 	children: ChildNodeInfo[],
 	containerWidth: number,
 	fullText: string,
-	segmenter: Intl.Segmenter,
+	segmenter: WordSegmenter,
 ): number[] {
 	const n = children.length;
 	if (n === 0 || containerWidth <= 0) {
