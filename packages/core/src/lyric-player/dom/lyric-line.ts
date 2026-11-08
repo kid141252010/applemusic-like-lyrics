@@ -52,6 +52,7 @@ export class LyricLineEl extends LyricLineBase {
 	 * 输入未变时跳过重建流程，避免首次显示后触发的尺寸回调导致刚生成的遮罩被冗余销毁与重复构建
 	 */
 	private maskSignature = "";
+	private lastWordSegmenter = LyricLineBase.wordSegmenter;
 	/** 上次接收到的行尺寸，用于在尺寸未变化时跳过冗余的二次测量 */
 	private lastLineSize?: [number, number];
 
@@ -104,9 +105,7 @@ export class LyricLineEl extends LyricLineBase {
 		);
 		trans.setAttribute("class", styles.lyricSubLine);
 		roman.setAttribute("class", styles.lyricSubLine);
-		if (LyricLineBase.wordSegmenter) {
-			this.balancer = new LineBalancer(main, () => this.enableTextAutospace);
-		}
+		this.balancer = new LineBalancer(main, () => this.enableTextAutospace);
 		// 延迟构建具体行内容，进入可视区（含 overscan）时再构建
 		this.rebuildStyle();
 	}
@@ -582,6 +581,10 @@ export class LyricLineEl extends LyricLineBase {
 
 		const containerWidth = this.balancer?.getContainerWidth(mainStyle) ?? 0;
 		const signature = this.computeMaskSignature(containerWidth, maxEndTime);
+		if (this.lastWordSegmenter !== LyricLineBase.wordSegmenter) {
+			this.maskSignature = "";
+			this.lastWordSegmenter = LyricLineBase.wordSegmenter;
+		}
 
 		// 若输入未发生变更，则直接复用现有动画。由于销毁并重建逐词动画是该调用路径上性能开销最高的操作，
 		// 且首次显示后的尺寸监听回调所传入的参数与初次完全相同，因此复用机制可避免不必要的重建。
