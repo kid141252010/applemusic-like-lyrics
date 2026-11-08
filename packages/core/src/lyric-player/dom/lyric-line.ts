@@ -2,6 +2,7 @@ import type { LyricLine, LyricWord } from "#interfaces";
 import { LyricLineRenderMode } from "#lyric/base/consts.ts";
 import { LyricLineBase } from "#lyric/base/line.ts";
 import styles from "#styles/lyric-player.module.css";
+import { playFrom } from "#utils/animation.ts";
 import { clampPositive } from "#utils/clamp.ts";
 import { isCJK } from "#utils/is-cjk.ts";
 import { appendTextWithAutospace, LineBalancer } from "#utils/line-balancer.ts";
@@ -132,7 +133,7 @@ export class LyricLineEl extends LyricLineBase {
 				const timing = a.effect?.getComputedTiming();
 				const endTime =
 					Number(timing?.delay ?? 0) + Number(timing?.duration ?? 0);
-				if (shouldPlay && relativeTime < endTime) a.play();
+				if (shouldPlay && relativeTime < endTime) playFrom(a, relativeTime);
 				else a.pause();
 			}
 		}
@@ -179,11 +180,9 @@ export class LyricLineEl extends LyricLineBase {
 					const timing = a.effect?.getComputedTiming();
 					const endTime =
 						Number(timing?.delay ?? 0) + Number(timing?.duration ?? 0);
-					if (
-						a.playState !== "finished" &&
-						((a.currentTime as number) || 0) < endTime
-					)
-						a.play();
+					const currentTime = Number(a.currentTime ?? 0);
+					if (a.playState !== "finished" && currentTime < endTime)
+						playFrom(a, currentTime);
 				}
 			}
 		}

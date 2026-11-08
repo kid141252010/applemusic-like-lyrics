@@ -1,3 +1,4 @@
+import { playFrom } from "#utils/animation.ts";
 import type { LineMaskAnimator, MaskContext, MaskTargetWord } from "./types.ts";
 import { generateFadeGradient } from "./utils.ts";
 
@@ -44,7 +45,7 @@ export class WebMaskAnimator implements LineMaskAnimator {
 			const endTime = this.getAnimationEndTime(a);
 
 			if (isPlaying && t < endTime) {
-				a.play();
+				playFrom(a, t);
 			} else {
 				a.pause();
 			}
@@ -63,7 +64,7 @@ export class WebMaskAnimator implements LineMaskAnimator {
 			const currentTime = Number(a.currentTime ?? 0);
 
 			if (a.playState !== "finished" && currentTime < endTime) {
-				a.play();
+				playFrom(a, currentTime);
 			}
 		}
 	}
