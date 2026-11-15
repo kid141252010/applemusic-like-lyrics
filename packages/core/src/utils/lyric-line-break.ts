@@ -140,8 +140,8 @@ export function calcBalancedBreaks(
 					continue;
 				}
 			} else {
-				// 迫使所有行的长度方差最小化
-				lineCost = (containerWidth - w) ** 2;
+				// 末行不计留白代价，让前面的行尽量填满。
+				lineCost = j === n ? 0 : (containerWidth - w) ** 2;
 			}
 
 			let breakPenalty = 0;
