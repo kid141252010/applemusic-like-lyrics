@@ -153,3 +153,14 @@ it("keeps English word units and oversized-unit overflow handling", () => {
 	).toEqual([1]);
 	expect(calcBalancedBreaks([], 4, "", segmenter)).toEqual([]);
 });
+
+it("does not add lines for punctuation rewards", () => {
+	const text = "Show it to me, boys, show it to me, boys";
+	const segmenter = new Intl.Segmenter("en", { granularity: "word" });
+	const children = [...segmenter.segment(text)].map(({ segment }) => ({
+		text: segment,
+		width: segment.length,
+		isSpace: !segment.trim(),
+	}));
+	expect(calcBalancedBreaks(children, 34, text, segmenter)).toEqual([11]);
+});
