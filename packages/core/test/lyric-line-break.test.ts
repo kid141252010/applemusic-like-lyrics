@@ -116,6 +116,16 @@ it.each([
 	},
 );
 
+it("prefers script boundaries for dynamic words with trailing spaces", () => {
+	const text = "집중 해 좀 더 Think fast";
+	const children = ["집중 ", "해 ", "좀 ", "더 ", "Think ", "fast"].map(
+		(text) => ({ text, width: text.length, isSpace: false }),
+	);
+	const segmenter = new Intl.Segmenter("ko", { granularity: "word" });
+
+	expect(calcBalancedBreaks(children, 15, text, segmenter)).toEqual([4]);
+});
+
 it("keeps English word units and oversized-unit overflow handling", () => {
 	const text = "The music keeps playing in my heart";
 	const segmenter = new Intl.Segmenter("en", { granularity: "word" });
