@@ -126,6 +126,26 @@ it("prefers script boundaries for dynamic words with trailing spaces", () => {
 	expect(calcBalancedBreaks(children, 15, text, segmenter)).toEqual([4]);
 });
 
+it("prefers script boundaries for dynamic word wrappers with romanization", () => {
+	const children = [
+		{ text: "집중jip jung", width: 118, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "해hae", width: 52, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "좀jom", width: 52, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "더deo", width: 52, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "Think", width: 96, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "fast", width: 74, isSpace: false },
+	];
+	const fullText = children.map(({ text }) => text).join("");
+	const segmenter = new Intl.Segmenter("ko", { granularity: "word" });
+
+	expect(calcBalancedBreaks(children, 490, fullText, segmenter)).toEqual([8]);
+});
+
 it("keeps English word units and oversized-unit overflow handling", () => {
 	const text = "The music keeps playing in my heart";
 	const segmenter = new Intl.Segmenter("en", { granularity: "word" });
