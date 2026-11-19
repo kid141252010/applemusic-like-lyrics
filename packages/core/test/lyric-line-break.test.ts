@@ -146,6 +146,60 @@ it("prefers script boundaries for dynamic word wrappers with romanization", () =
 	expect(calcBalancedBreaks(children, 490, fullText, segmenter)).toEqual([8]);
 });
 
+it("prefers the Korean-English boundary over English word filling", () => {
+	const children = [
+		{ text: "무리mu ri", width: 190, isSpace: false },
+		{ text: " ", width: 28, isSpace: true },
+		{ text: "해도hae do", width: 197, isSpace: false },
+		{ text: " ", width: 28, isSpace: true },
+		{ text: "Can't", width: 280, isSpace: false },
+		{ text: " ", width: 28, isSpace: true },
+		{ text: "touch", width: 235, isSpace: false },
+		{ text: " ", width: 28, isSpace: true },
+		{ text: "that", width: 170, isSpace: false },
+	];
+	const fullText = children.map(({ text }) => text).join("");
+	const segmenter = new Intl.Segmenter("ko", { granularity: "word" });
+
+	expect(calcBalancedBreaks(children, 790, fullText, segmenter)).toEqual([4]);
+});
+
+it("does not force an early script boundary", () => {
+	const children = [
+		{ text: "해hae", width: 45, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "Everything", width: 210, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "is", width: 60, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "beautiful", width: 190, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "tonight", width: 150, isSpace: false },
+	];
+	const fullText = children.map(({ text }) => text).join("");
+	const segmenter = new Intl.Segmenter("ko", { granularity: "word" });
+
+	expect(calcBalancedBreaks(children, 470, fullText, segmenter)).toEqual([6]);
+});
+
+it("prefers both script boundaries when both lines fit", () => {
+	const children = [
+		{ text: "집중jip jung", width: 118, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "Think", width: 96, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "fast", width: 74, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "집중jip jung", width: 118, isSpace: false },
+		{ text: " ", width: 12, isSpace: true },
+		{ text: "해hae", width: 52, isSpace: false },
+	];
+	const fullText = children.map(({ text }) => text).join("");
+	const segmenter = new Intl.Segmenter("ko", { granularity: "word" });
+
+	expect(calcBalancedBreaks(children, 300, fullText, segmenter)).toEqual([2, 6]);
+});
+
 it("keeps English word units and oversized-unit overflow handling", () => {
 	const text = "The music keeps playing in my heart";
 	const segmenter = new Intl.Segmenter("en", { granularity: "word" });
